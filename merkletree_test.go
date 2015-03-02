@@ -202,7 +202,7 @@ func TestBuildAndVerifyProof(t *testing.T) {
 		for j, expectedProveSet := range manualProveSets {
 			// Build out the tree.
 			tree.Reset()
-			err := tree.SetIndex(j)
+			err := tree.SetIndex(uint64(j))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -219,10 +219,10 @@ func TestBuildAndVerifyProof(t *testing.T) {
 				t.Error("prove set is wrong length for indices", i, j)
 				continue
 			}
-			if proveIndex != j {
+			if proveIndex != uint64(j) {
 				t.Error("incorrect proveIndex returned for indices", i, j)
 			}
-			if numSegments != i {
+			if numSegments != uint64(i) {
 				t.Error("incorrect numSegments returned for indices", i, j)
 			}
 			for k := range proveSet {
@@ -236,7 +236,7 @@ func TestBuildAndVerifyProof(t *testing.T) {
 			if !VerifyProof(sha256.New(), merkleRoot, proveSet, proveIndex, numSegments) {
 				t.Error("prove set does not verify for indices", i, j)
 			}
-			for k := 0; k < i; k++ {
+			for k := uint64(0); k < uint64(i); k++ {
 				if k == proveIndex {
 					continue
 				}
@@ -329,18 +329,18 @@ func TestCompatibility(t *testing.T) {
 	}
 
 	// Brute force all trees up to size 'max'. Running time for this test is max^3.
-	max := 32
+	max := uint64(32)
 	tree := New(sha256.New())
-	for i := 1; i < max; i++ {
+	for i := uint64(1); i < max; i++ {
 		// Try with proof at every possible index.
-		for j := 0; j < i; j++ {
+		for j := uint64(0); j < i; j++ {
 			// Push unique data into the tree.
 			tree.Reset()
 			err := tree.SetIndex(j)
 			if err != nil {
 				t.Fatal(err)
 			}
-			for k := 0; k < i; k++ {
+			for k := uint64(0); k < i; k++ {
 				tree.Push([]byte{byte(k)})
 			}
 
@@ -351,7 +351,7 @@ func TestCompatibility(t *testing.T) {
 			}
 
 			// Check that verification fails for all other indices.
-			for k := 0; k < i; k++ {
+			for k := uint64(0); k < i; k++ {
 				if k == j {
 					continue
 				}
