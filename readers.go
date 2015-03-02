@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-// ReadereRoot returns the Merkle root of the data read from the reader, where
+// ReaderRoot returns the Merkle root of the data read from the reader, where
 // each leaf is 'segmentSize' long and 'h' is used as the hashing function. All
 // leaves will be 'segmentSize' bytes, the last leaf may have extra zeros.
 func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err error) {

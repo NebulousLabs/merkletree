@@ -20,11 +20,11 @@ type MerkleTester struct {
 	// the data for input.
 	roots map[int][]byte
 
-	// proveSets contains proofs that certain data is in a merkle tree. The
+	// proofSets contains proofs that certain data is in a merkle tree. The
 	// first map is the number of leaves in the tree that the proof is for. The
 	// root of that tree can be found in roots. The second map is the
-	// proveIndex that was used when building the proof.
-	proveSets map[int]map[int][][]byte
+	// proofIndex that was used when building the proof.
+	proofSets map[int]map[int][][]byte
 	*testing.T
 }
 
@@ -40,7 +40,7 @@ func (mt *MerkleTester) join(a, b []byte) []byte {
 func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	mt = &MerkleTester{
 		roots:     make(map[int][]byte),
-		proveSets: make(map[int]map[int][][]byte),
+		proofSets: make(map[int]map[int][][]byte),
 	}
 	mt.T = t
 
@@ -108,37 +108,37 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 		),
 	)
 
-	// Manually build out some prove sets that should should match what the
+	// Manually build out some proof sets that should should match what the
 	// Tree creates for the same values.
-	mt.proveSets[1] = make(map[int][][]byte)
-	mt.proveSets[1][0] = append([][]byte(nil), mt.data[0])
+	mt.proofSets[1] = make(map[int][][]byte)
+	mt.proofSets[1][0] = append([][]byte(nil), mt.data[0])
 
-	mt.proveSets[2] = make(map[int][][]byte)
-	mt.proveSets[2][0] = append(mt.proveSets[2][0], mt.data[0])
-	mt.proveSets[2][0] = append(mt.proveSets[2][0], mt.leaves[1])
+	mt.proofSets[2] = make(map[int][][]byte)
+	mt.proofSets[2][0] = append(mt.proofSets[2][0], mt.data[0])
+	mt.proofSets[2][0] = append(mt.proofSets[2][0], mt.leaves[1])
 
-	mt.proveSets[2][1] = append(mt.proveSets[2][1], mt.data[1])
-	mt.proveSets[2][1] = append(mt.proveSets[2][1], mt.leaves[0])
+	mt.proofSets[2][1] = append(mt.proofSets[2][1], mt.data[1])
+	mt.proofSets[2][1] = append(mt.proofSets[2][1], mt.leaves[0])
 
-	mt.proveSets[5] = make(map[int][][]byte)
-	mt.proveSets[5][4] = append(mt.proveSets[5][4], mt.data[4])
-	mt.proveSets[5][4] = append(mt.proveSets[5][4], mt.roots[4])
+	mt.proofSets[5] = make(map[int][][]byte)
+	mt.proofSets[5][4] = append(mt.proofSets[5][4], mt.data[4])
+	mt.proofSets[5][4] = append(mt.proofSets[5][4], mt.roots[4])
 
-	mt.proveSets[7] = make(map[int][][]byte)
-	mt.proveSets[7][5] = append(mt.proveSets[7][5], mt.data[5])
-	mt.proveSets[7][5] = append(mt.proveSets[7][5], mt.leaves[4])
-	mt.proveSets[7][5] = append(mt.proveSets[7][5], mt.leaves[6])
-	mt.proveSets[7][5] = append(mt.proveSets[7][5], mt.roots[4])
+	mt.proofSets[7] = make(map[int][][]byte)
+	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.data[5])
+	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.leaves[4])
+	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.leaves[6])
+	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.roots[4])
 
-	mt.proveSets[15] = make(map[int][][]byte)
-	mt.proveSets[15][3] = append(mt.proveSets[15][3], mt.data[3])
-	mt.proveSets[15][3] = append(mt.proveSets[15][3], mt.leaves[2])
-	mt.proveSets[15][3] = append(mt.proveSets[15][3], mt.roots[2])
-	mt.proveSets[15][3] = append(mt.proveSets[15][3], mt.join(
+	mt.proofSets[15] = make(map[int][][]byte)
+	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.data[3])
+	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.leaves[2])
+	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.roots[2])
+	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.join(
 		mt.join(mt.leaves[4], mt.leaves[5]),
 		mt.join(mt.leaves[6], mt.leaves[7]),
 	))
-	mt.proveSets[15][3] = append(mt.proveSets[15][3], mt.join(
+	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.join(
 		mt.join(
 			mt.join(mt.leaves[8], mt.leaves[9]),
 			mt.join(mt.leaves[10], mt.leaves[11]),
@@ -149,17 +149,17 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 		),
 	))
 
-	mt.proveSets[15][10] = append(mt.proveSets[15][10], mt.data[10])
-	mt.proveSets[15][10] = append(mt.proveSets[15][10], mt.leaves[11])
-	mt.proveSets[15][10] = append(mt.proveSets[15][10], mt.join(
+	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.data[10])
+	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.leaves[11])
+	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.join(
 		mt.leaves[8],
 		mt.leaves[9],
 	))
-	mt.proveSets[15][10] = append(mt.proveSets[15][10], mt.join(
+	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.join(
 		mt.join(mt.leaves[12], mt.leaves[13]),
 		mt.leaves[14],
 	))
-	mt.proveSets[15][10] = append(mt.proveSets[15][10], mt.roots[8])
+	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.roots[8])
 
 	return
 }
@@ -198,7 +198,7 @@ func TestBuildAndVerifyProof(t *testing.T) {
 	// Compare the results of building a merkle proof to all of the manually
 	// constructed proofs.
 	tree := New(sha256.New())
-	for i, manualProveSets := range mt.proveSets {
+	for i, manualProveSets := range mt.proofSets {
 		for j, expectedProveSet := range manualProveSets {
 			// Build out the tree.
 			tree.Reset()
@@ -211,56 +211,56 @@ func TestBuildAndVerifyProof(t *testing.T) {
 			}
 
 			// Get the proof and check all values.
-			merkleRoot, proveSet, proveIndex, numSegments := tree.Prove()
+			merkleRoot, proofSet, proofIndex, numSegments := tree.Prove()
 			if bytes.Compare(merkleRoot, mt.roots[i]) != 0 {
 				t.Error("incorrect Merkle root returned by Tree for indices", i, j)
 			}
-			if len(proveSet) != len(expectedProveSet) {
-				t.Error("prove set is wrong length for indices", i, j)
+			if len(proofSet) != len(expectedProveSet) {
+				t.Error("proof set is wrong length for indices", i, j)
 				continue
 			}
-			if proveIndex != uint64(j) {
-				t.Error("incorrect proveIndex returned for indices", i, j)
+			if proofIndex != uint64(j) {
+				t.Error("incorrect proofIndex returned for indices", i, j)
 			}
 			if numSegments != uint64(i) {
 				t.Error("incorrect numSegments returned for indices", i, j)
 			}
-			for k := range proveSet {
-				if bytes.Compare(proveSet[k], expectedProveSet[k]) != 0 {
-					t.Error("prove set does not match expected prove set for indices", i, j, k)
+			for k := range proofSet {
+				if bytes.Compare(proofSet[k], expectedProveSet[k]) != 0 {
+					t.Error("proof set does not match expected proof set for indices", i, j, k)
 				}
 			}
 
-			// Check that verification works on for the desired prove index but
+			// Check that verification works on for the desired proof index but
 			// fails for all other indices.
-			if !VerifyProof(sha256.New(), merkleRoot, proveSet, proveIndex, numSegments) {
-				t.Error("prove set does not verify for indices", i, j)
+			if !VerifyProof(sha256.New(), merkleRoot, proofSet, proofIndex, numSegments) {
+				t.Error("proof set does not verify for indices", i, j)
 			}
 			for k := uint64(0); k < uint64(i); k++ {
-				if k == proveIndex {
+				if k == proofIndex {
 					continue
 				}
-				if VerifyProof(sha256.New(), merkleRoot, proveSet, k, numSegments) {
-					t.Error("prove set verifies for wrong index at indices", i, j, k)
+				if VerifyProof(sha256.New(), merkleRoot, proofSet, k, numSegments) {
+					t.Error("proof set verifies for wrong index at indices", i, j, k)
 				}
 			}
 
 			// Check that calling Prove a second time results in the same
 			// values.
-			merkleRoot2, proveSet2, proveIndex2, numSegments2 := tree.Prove()
+			merkleRoot2, proofSet2, proofIndex2, numSegments2 := tree.Prove()
 			if bytes.Compare(merkleRoot, merkleRoot2) != 0 {
 				t.Error("tree returned different merkle roots after calling Prove twice for indices", i, j)
 			}
-			if len(proveSet) != len(proveSet2) {
-				t.Error("tree returned different prove sets after calling Prove twice for indices", i, j)
+			if len(proofSet) != len(proofSet2) {
+				t.Error("tree returned different proof sets after calling Prove twice for indices", i, j)
 			}
-			for k := range proveSet {
-				if bytes.Compare(proveSet[k], proveSet2[k]) != 0 {
-					t.Error("tree returned different prove sets after calling Prove twice for indices", i, j)
+			for k := range proofSet {
+				if bytes.Compare(proofSet[k], proofSet2[k]) != 0 {
+					t.Error("tree returned different proof sets after calling Prove twice for indices", i, j)
 				}
 			}
-			if proveIndex != proveIndex2 {
-				t.Error("tree returned different prove indexes after calling Prove twice for indices", i, j)
+			if proofIndex != proofIndex2 {
+				t.Error("tree returned different proof indexes after calling Prove twice for indices", i, j)
 			}
 			if numSegments != numSegments2 {
 				t.Error("tree returned different segment count after calling Prove twice for indices", i, j)
@@ -306,17 +306,17 @@ func TestBadInputs(t *testing.T) {
 
 	// Try nil values in VerifyProof.
 	mt := CreateMerkleTester(t)
-	if VerifyProof(sha256.New(), nil, mt.proveSets[1][0], 0, 1) {
+	if VerifyProof(sha256.New(), nil, mt.proofSets[1][0], 0, 1) {
 		t.Error("VerifyProof should return false for nil merkle root")
 	}
 	if VerifyProof(sha256.New(), []byte{1}, nil, 0, 1) {
-		t.Error("VerifyProof should return false for nil prove set")
+		t.Error("VerifyProof should return false for nil proof set")
 	}
-	if VerifyProof(sha256.New(), mt.roots[15], mt.proveSets[15][3][1:], 3, 15) {
-		t.Error("VerifyPRoof should return false for too-short prove set")
+	if VerifyProof(sha256.New(), mt.roots[15], mt.proofSets[15][3][1:], 3, 15) {
+		t.Error("VerifyPRoof should return false for too-short proof set")
 	}
-	if VerifyProof(sha256.New(), mt.roots[15], mt.proveSets[15][10][1:], 10, 15) {
-		t.Error("VerifyPRoof should return false for too-short prove set")
+	if VerifyProof(sha256.New(), mt.roots[15], mt.proofSets[15][10][1:], 10, 15) {
+		t.Error("VerifyPRoof should return false for too-short proof set")
 	}
 }
 
@@ -345,8 +345,8 @@ func TestCompatibility(t *testing.T) {
 			}
 
 			// Build the proof for the tree and run it through verify.
-			merkleRoot, proveSet, proveIndex, numLeaves := tree.Prove()
-			if !VerifyProof(sha256.New(), merkleRoot, proveSet, proveIndex, numLeaves) {
+			merkleRoot, proofSet, proofIndex, numLeaves := tree.Prove()
+			if !VerifyProof(sha256.New(), merkleRoot, proofSet, proofIndex, numLeaves) {
 				t.Error("proof didn't verify for indices", i, j)
 			}
 
@@ -355,7 +355,7 @@ func TestCompatibility(t *testing.T) {
 				if k == j {
 					continue
 				}
-				if VerifyProof(sha256.New(), merkleRoot, proveSet, k, numLeaves) {
+				if VerifyProof(sha256.New(), merkleRoot, proofSet, k, numLeaves) {
 					t.Error("proof verified for indices", i, j, k)
 				}
 			}

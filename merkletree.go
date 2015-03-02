@@ -18,11 +18,11 @@ type Tree struct {
 	head *subTree
 	hash hash.Hash
 
-	// Variables to help build proofs that the data at 'proveIndex' is in the
+	// Variables to help build proofs that the data at 'proofIndex' is in the
 	// merkle tree.
 	currentIndex uint64
-	proveIndex   uint64
-	proveSet     [][]byte
+	proofIndex   uint64
+	proofSet     [][]byte
 }
 
 // A subTree is a subTree in the Tree. 'height' refers to how tall the subTree
@@ -69,8 +69,8 @@ func New(h hash.Hash) *Tree {
 func (t *Tree) Reset() {
 	t.head = nil
 	t.currentIndex = 0
-	t.proveIndex = 0
-	t.proveSet = nil
+	t.proofIndex = 0
+	t.proofSet = nil
 }
 
 // SetIndex resets the tree, and then sets the index for which a proof that the
@@ -79,7 +79,7 @@ func (t *Tree) SetIndex(i uint64) error {
 	if t.head != nil {
 		return errors.New("cannot call SetIndex on Tree if Tree has not been reset")
 	}
-	t.proveIndex = i
+	t.proofIndex = i
 	return nil
 }
 
@@ -89,8 +89,8 @@ func (t *Tree) Push(data []byte) {
 	// The first element of a proof is the original data at a leaf. If the
 	// current index is the index for which we are creating a proof, save the
 	// data.
-	if t.currentIndex == t.proveIndex {
-		t.proveSet = append(t.proveSet, data)
+	if t.currentIndex == t.proofIndex {
+		t.proofSet = append(t.proofSet, data)
 	}
 
 	// Hash the data, creating a subTree of height 1.
@@ -105,17 +105,17 @@ func (t *Tree) Push(data []byte) {
 		// When creating a proof for a specific index, you need to collect one
 		// hash at each height of the tree, and that hash will be found in the
 		// same subTree as the initial leaf. Before we hit that index, this
-		// logic will be ignored because len(proveSet) will be 0. After we hit
-		// that index, len(proveSet) will be one. From that point forward,
+		// logic will be ignored because len(proofSet) will be 0. After we hit
+		// that index, len(proofSet) will be one. From that point forward,
 		// every time there are two subTrees (the current one and the previous
-		// one) that have a height equal to len(proveSet) we will need to grab
-		// one of the roots and add it to the prove set.
-		if current.height == len(t.proveSet) {
+		// one) that have a height equal to len(proofSet) we will need to grab
+		// one of the roots and add it to the proof set.
+		if current.height == len(t.proofSet) {
 			// Either the root of the current subTree or the root of the
 			// previous subTree needs to be added to the proof set. We want to
 			// grab the root of the subTree that does not contain
-			// 't.proveIndex'. We do this by finding the starting index of the
-			// current subTree and comparing it to 't.proveInex'.
+			// 't.proofIndex'. We do this by finding the starting index of the
+			// current subTree and comparing it to 't.proofIndex'.
 			//
 			// The start of the first subTree can be determined by rounding
 			// the currentIndex down to the nearest (2^height). This represents
@@ -124,10 +124,10 @@ func (t *Tree) Push(data []byte) {
 			combinedSize := uint64(1 << uint(current.height))
 			previousStart := (t.currentIndex / combinedSize) * combinedSize
 			currentStart := previousStart + (combinedSize / 2)
-			if t.proveIndex < currentStart {
-				t.proveSet = append(t.proveSet, current.sum)
+			if t.proofIndex < currentStart {
+				t.proofSet = append(t.proofSet, current.sum)
 			} else {
-				t.proveSet = append(t.proveSet, t.head.sum)
+				t.proofSet = append(t.proofSet, t.head.sum)
 			}
 		}
 
@@ -165,16 +165,16 @@ func (t *Tree) Root() (root []byte) {
 	return root
 }
 
-// Prove returns a proof that the data at index 'proveIndex' is an element in
+// Prove returns a proof that the data at index 'proofIndex' is an element in
 // the current Tree. The proof will be invalid if any more elements are added
 // to the tree after calling Prove. The tree is left unaltered.
-func (t *Tree) Prove() (merkleRoot []byte, proveSet [][]byte, proveIndex uint64, numLeaves uint64) {
-	// Return nil if the Tree is empty, or if the proveIndex hasn't yet been
+func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) {
+	// Return nil if the Tree is empty, or if the proofIndex hasn't yet been
 	// reached.
-	if t.head == nil || len(t.proveSet) == 0 {
-		return t.Root(), nil, t.proveIndex, t.currentIndex
+	if t.head == nil || len(t.proofSet) == 0 {
+		return t.Root(), nil, t.proofIndex, t.currentIndex
 	}
-	proveSet = t.proveSet
+	proofSet = t.proofSet
 
 	// The hashes have already been provided for the largest complete subTree
 	// that contains 't.ProveIndex'. If 't.CurrentIndex' is a power of two, we
@@ -182,68 +182,68 @@ func (t *Tree) Prove() (merkleRoot []byte, proveSet [][]byte, proveIndex uint64,
 	// be added to the proof. The first is the hashes of the smaller subTrees.
 	// All of the smaller subTrees need to be combined, and then that hash
 	// needs to be saved. The second is the larger subTrees. The root of each
-	// of the larger subTrees needs to be saved. The subTree with the prove
-	// index will have a height equal to the current length of the prove set.
+	// of the larger subTrees needs to be saved. The subTree with the proof
+	// index will have a height equal to the current length of the proof set.
 
 	// Iterate through all of the smaller subTrees and combine them.
 	current := t.head
 	sum := current.sum
-	for current.next != nil && current.next.height < len(proveSet) {
+	for current.next != nil && current.next.height < len(proofSet) {
 		// Combine this subTree with the next subTree.
 		sum = join(t.hash, current.next.sum, sum)
 		current = current.next
 	}
 
 	// If the current subTree is the last subTree before the subTree containing
-	// the prove index, add the root of the subTree to the prove set.
-	if current.next != nil && current.next.height == len(proveSet) {
-		proveSet = append(proveSet, sum)
+	// the proof index, add the root of the subTree to the proof set.
+	if current.next != nil && current.next.height == len(proofSet) {
+		proofSet = append(proofSet, sum)
 		current = current.next
 	}
 
-	// The subTree containing the prove index needs to be skipped.
+	// The subTree containing the proof index needs to be skipped.
 	current = current.next
 
 	// Now add the roots of all subTrees that are larger than the subTree
 	// containing the proof index.
 	for current != nil {
-		proveSet = append(proveSet, current.sum)
+		proofSet = append(proofSet, current.sum)
 		current = current.next
 	}
-	return t.Root(), proveSet, t.proveIndex, t.currentIndex
+	return t.Root(), proofSet, t.proofIndex, t.currentIndex
 }
 
-// VerifyProof takes a Merkle root, a proveSet, and a proveIndex and returns
-// true if the first element of the prove set is a leaf of data in the Merkle
+// VerifyProof takes a Merkle root, a proofSet, and a proofIndex and returns
+// true if the first element of the proof set is a leaf of data in the Merkle
 // root.
-func VerifyProof(h hash.Hash, merkleRoot []byte, proveSet [][]byte, proveIndex uint64, numLeaves uint64) bool {
-	if len(proveSet) == 0 || merkleRoot == nil || numLeaves == 0 {
+func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) bool {
+	if len(proofSet) == 0 || merkleRoot == nil || numLeaves == 0 {
 		return false
 	}
 
-	// The first element of the prove set is the original data. Hash it to get
+	// The first element of the proof set is the original data. Hash it to get
 	// the first level subTree root.
 	height := 0
-	sum := sum(h, proveSet[height])
+	sum := sum(h, proofSet[height])
 	height++
 
 	// A proof on a complete tree can be constructed by finding the two
 	// relevant subTrees of each height and determining which subTree contains
-	// the prove index. If the subTree that comes first contains the prove
-	// index, you set sum equal to H(sum || proveSet[height]), otherwise you
-	// set it equal to H(proveSet[height] || sum).
+	// the proof index. If the subTree that comes first contains the proof
+	// index, you set sum equal to H(sum || proofSet[height]), otherwise you
+	// set it equal to H(proofSet[height] || sum).
 	//
 	// Verification starts by searching for the subTree that contains the
-	// proveIndex, and applying the above algorithm. After that, any smaller
+	// proofIndex, and applying the above algorithm. After that, any smaller
 	// subTrees can be accounted for by setting sum equal to H(sum ||
-	// proveSet[height]) (skip if there are no smaller subTrees). For each
-	// larger subTree, set sum equal to H(proveSet[height] || sum). At this
-	// point, the proof is complete. If there are any elements in the prove set
+	// proofSet[height]) (skip if there are no smaller subTrees). For each
+	// larger subTree, set sum equal to H(proofSet[height] || sum). At this
+	// point, the proof is complete. If there are any elements in the proof set
 	// that haven't been used, return false. If 'sum' == 'merkleRoot', return
 	// true.
 
 	// The code starts by counting the number of larger subTrees while figuring
-	// out which subTree contains the proveIndex.
+	// out which subTree contains the proofIndex.
 	leavesSkipped := uint64(0)
 	largerSubTrees := uint64(0)
 	subTreeSize := uint64(1)
@@ -253,7 +253,7 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proveSet [][]byte, proveIndex u
 			subTreeSize *= 2
 		}
 
-		if proveIndex-leavesSkipped < subTreeSize {
+		if proofIndex-leavesSkipped < subTreeSize {
 			break
 		}
 		leavesSkipped += subTreeSize
@@ -261,22 +261,22 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proveSet [][]byte, proveIndex u
 	}
 
 	// relativePosition descrives the starting point of the subTree that
-	// contains the prove index. The for loop will iterate once per level of
-	// the subTree. Each level, find the pair of nodes that contain the prove
-	// index and then determine which of those two contains the prove index.
-	adjustedProveIndex := proveIndex - leavesSkipped
+	// contains the proof index. The for loop will iterate once per level of
+	// the subTree. Each level, find the pair of nodes that contain the proof
+	// index and then determine which of those two contains the proof index.
+	adjustedProveIndex := proofIndex - leavesSkipped
 	for uint64(1<<uint(height)) <= subTreeSize {
-		// Check that there are enough items in the prove set.
-		if len(proveSet) <= height {
+		// Check that there are enough items in the proof set.
+		if len(proofSet) <= height {
 			return false
 		}
 		levelSize := uint64(1 << uint(height))
 		levelStart := (adjustedProveIndex / levelSize) * levelSize
 		mid := levelStart + (levelSize / 2)
 		if adjustedProveIndex < mid {
-			sum = join(h, sum, proveSet[height])
+			sum = join(h, sum, proofSet[height])
 		} else {
-			sum = join(h, proveSet[height], sum)
+			sum = join(h, proofSet[height], sum)
 		}
 		height++
 	}
@@ -284,24 +284,24 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proveSet [][]byte, proveIndex u
 	// If there is a smaller subTree, account for the hash that gets included
 	// in the proof.
 	if subTreeSize < numLeaves-leavesSkipped {
-		if len(proveSet) <= height {
+		if len(proofSet) <= height {
 			return false
 		}
-		sum = join(h, sum, proveSet[height])
+		sum = join(h, sum, proofSet[height])
 		height++
 	}
 
 	// Include a hash for each larger subTree.
 	for i := uint64(0); i < largerSubTrees; i++ {
-		if len(proveSet) <= height {
+		if len(proofSet) <= height {
 			return false
 		}
-		sum = join(h, proveSet[height], sum)
+		sum = join(h, proofSet[height], sum)
 		height++
 	}
 
-	// If there are still elements remaining in the prove set, return false.
-	if len(proveSet) > height {
+	// If there are still elements remaining in the proof set, return false.
+	if len(proofSet) > height {
 		return false
 	}
 

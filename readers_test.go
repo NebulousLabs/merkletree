@@ -44,18 +44,18 @@ func TestBuilReaderProof(t *testing.T) {
 	mt := CreateMerkleTester(t)
 	bytes7 := []byte{0, 1, 2, 3, 4, 5, 6}
 	reader := bytes.NewReader(bytes7)
-	root, proveSet, numLeaves, err := BuildReaderProof(reader, sha256.New(), 1, 5)
+	root, proofSet, numLeaves, err := BuildReaderProof(reader, sha256.New(), 1, 5)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if bytes.Compare(root, mt.roots[7]) != 0 {
 		t.Error("BuildReaderProof returned the wrong root")
 	}
-	if len(proveSet) != len(mt.proveSets[7][5]) {
+	if len(proofSet) != len(mt.proofSets[7][5]) {
 		t.Fatal("BuildReaderProof returned a proof with the wrong length")
 	}
-	for i := range proveSet {
-		if bytes.Compare(proveSet[i], mt.proveSets[7][5][i]) != 0 {
+	for i := range proofSet {
+		if bytes.Compare(proofSet[i], mt.proofSets[7][5][i]) != 0 {
 			t.Error("BuildReaderProof returned an incorrect proof")
 		}
 	}
@@ -70,7 +70,7 @@ func TestBuilReaderProof(t *testing.T) {
 func TestBuilderProofEOF(t *testing.T) {
 	bytes1 := []byte{1}
 	reader := bytes.NewReader(bytes1)
-	root, proveSet, numLeaves, err := BuildReaderProof(reader, sha256.New(), 2, 0)
+	root, proofSet, numLeaves, err := BuildReaderProof(reader, sha256.New(), 2, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,11 +79,11 @@ func TestBuilderProofEOF(t *testing.T) {
 	if bytes.Compare(root, expectedRoot) != 0 {
 		t.Error("ReaderRoot returned the wrong root")
 	}
-	if len(proveSet) != 1 {
-		t.Fatal("proveSet is the incorrect lenght")
+	if len(proofSet) != 1 {
+		t.Fatal("proofSet is the incorrect lenght")
 	}
-	if bytes.Compare(proveSet[0], []byte{1, 0}) != 0 {
-		t.Error("prove set is incorrect")
+	if bytes.Compare(proofSet[0], []byte{1, 0}) != 0 {
+		t.Error("proofSet is incorrect")
 	}
 	if numLeaves != 1 {
 		t.Error("wrong number of leaves returned")
