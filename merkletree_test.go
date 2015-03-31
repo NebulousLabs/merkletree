@@ -161,6 +161,15 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	))
 	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.roots[8])
 
+	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.data[13])
+	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.leaves[12])
+	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.leaves[14])
+	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.join(
+		mt.join(mt.leaves[8], mt.leaves[9]),
+		mt.join(mt.leaves[10], mt.leaves[11]),
+	))
+	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.roots[8])
+
 	return
 }
 
