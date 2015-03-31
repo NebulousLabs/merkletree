@@ -74,4 +74,4 @@ hashed multiple times.
 ```
 
 When using the Reader functions (ReaderRoot and BuildReaderProof), the last
-segment will be padded with 0's if there are not enough bytes.
+segment will not be padded if there are not 'segmentSize' bytes remaining.

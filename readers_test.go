@@ -21,10 +21,9 @@ func TestReaderRoot(t *testing.T) {
 	}
 }
 
-// TestReaderRootEOF passes ReaderRoot a reader that has too few
-// bytes to perfectly fill the segment size. The reader should pad the final
-// segment with zeros.
-func TestReaderRootEOF(t *testing.T) {
+// TestReaderRootPadding passes ReaderRoot a reader that has too few bytes to
+// fill the last segment. The segment should not be padded out.
+func TestReaderRootPadding(t *testing.T) {
 	bytes1 := []byte{1}
 	reader := bytes.NewReader(bytes1)
 	root, err := ReaderRoot(reader, sha256.New(), 2)
@@ -32,7 +31,21 @@ func TestReaderRootEOF(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedRoot := sum(sha256.New(), []byte{1, 0})
+	expectedRoot := sum(sha256.New(), []byte{1})
+	if bytes.Compare(root, expectedRoot) != 0 {
+		t.Error("ReaderRoot returned the wrong root")
+	}
+
+	bytes3 := []byte{1, 2, 3}
+	reader = bytes.NewReader(bytes3)
+	root, err = ReaderRoot(reader, sha256.New(), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	baseLeft := sum(sha256.New(), []byte{1, 2})
+	baseRight := sum(sha256.New(), []byte{3})
+	expectedRoot = sum(sha256.New(), append(baseLeft, baseRight...))
 	if bytes.Compare(root, expectedRoot) != 0 {
 		t.Error("ReaderRoot returned the wrong root")
 	}
@@ -64,10 +77,9 @@ func TestBuilReaderProof(t *testing.T) {
 	}
 }
 
-// TestBuilderProofEOF passes BuildReaderProof a reader that has too few bytes
-// to perfectly fill the segment size. The reader should pad the final segment
-// with zeros.
-func TestBuilderProofEOF(t *testing.T) {
+// TestBuildReaderProofPadding passes BuildReaderProof a reader that has too
+// few bytes to fill the last segment. The segment should not be padded out.
+func TestBuildReaderProofPadding(t *testing.T) {
 	bytes1 := []byte{1}
 	reader := bytes.NewReader(bytes1)
 	root, proofSet, numLeaves, err := BuildReaderProof(reader, sha256.New(), 2, 0)
@@ -75,14 +87,14 @@ func TestBuilderProofEOF(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedRoot := sum(sha256.New(), []byte{1, 0})
+	expectedRoot := sum(sha256.New(), []byte{1})
 	if bytes.Compare(root, expectedRoot) != 0 {
 		t.Error("ReaderRoot returned the wrong root")
 	}
 	if len(proofSet) != 1 {
 		t.Fatal("proofSet is the incorrect lenght")
 	}
-	if bytes.Compare(proofSet[0], []byte{1, 0}) != 0 {
+	if bytes.Compare(proofSet[0], []byte{1}) != 0 {
 		t.Error("proofSet is incorrect")
 	}
 	if numLeaves != 1 {

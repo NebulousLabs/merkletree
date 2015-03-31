@@ -12,13 +12,16 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err err
 	tree := New(h)
 	for {
 		segment := make([]byte, segmentSize)
-		_, readErr := io.ReadFull(r, segment)
+		n, readErr := io.ReadFull(r, segment)
 		if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
 			err = readErr
 			return
 		}
 		if readErr == io.EOF {
 			break
+		}
+		if n < segmentSize {
+			segment = segment[:n]
 		}
 		tree.Push(segment)
 	}
@@ -34,13 +37,16 @@ func BuildReaderProof(r io.Reader, h hash.Hash, segmentSize int, index uint64) (
 	tree.SetIndex(index)
 	for {
 		segment := make([]byte, segmentSize)
-		_, readErr := io.ReadFull(r, segment)
+		n, readErr := io.ReadFull(r, segment)
 		if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
 			err = readErr
 			return
 		}
 		if readErr == io.EOF {
 			break
+		}
+		if n < segmentSize {
+			segment = segment[:n]
 		}
 		tree.Push(segment)
 	}
