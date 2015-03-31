@@ -322,14 +322,16 @@ func TestBadInputs(t *testing.T) {
 
 // TestCompatibility runs BuildProof for a large set of trees, and checks that
 // verify affirms each proof, while rejecting for all other indexes (this
-// second half requires that all input data be unique).
+// second half requires that all input data be unique). The test checks that
+// build and verify are internally consistent, but doesn't check for actual
+// correctness.
 func TestCompatibility(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
 
 	// Brute force all trees up to size 'max'. Running time for this test is max^3.
-	max := uint64(32)
+	max := uint64(65)
 	tree := New(sha256.New())
 	for i := uint64(1); i < max; i++ {
 		// Try with proof at every possible index.
@@ -363,7 +365,7 @@ func TestCompatibility(t *testing.T) {
 	}
 }
 
-// BenchmarkSha256_4MB runs a benchmark on hashing 4MB using sha256.
+// BenchmarkSha256_4MB uses sha256 to hash 4mb of data.
 func BenchmarkSha256_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
 	rand.Read(data)
@@ -374,9 +376,9 @@ func BenchmarkSha256_4MB(b *testing.B) {
 	}
 }
 
-// BenchmarkTree64Sha256 runs a benchmark on creating a Merkle tree out of 4MB
-// using 64 bytes at a time, using sha256 as the hashing algorithm.
-func BenchmarkTree64Sha256(b *testing.B) {
+// BenchmarkTree64_4MB creates a Merkle tree out of 4MB using a segment size of
+// 64 bytes, using sha256.
+func BenchmarkTree64_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
 	rand.Read(data)
 	segmentSize := 64
@@ -391,9 +393,9 @@ func BenchmarkTree64Sha256(b *testing.B) {
 	}
 }
 
-// BenchmarkTree4kSha256 runs a benchmark on creating a Merkle tree out of 4MB
-// using 4k bytes at a time, using sha256 as the hashing algorithm.
-func BenchmarkTree4kSha256(b *testing.B) {
+// BenchmarkTree4k_4MB creates a Merkle tree out of 4MB using a segment size of
+// 4096 bytes, using sha256.
+func BenchmarkTree4k_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
 	rand.Read(data)
 	segmentSize := 4096
