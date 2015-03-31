@@ -130,8 +130,16 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 		mt.roots[4],
 	}
 
-	// mt.proofSet[6] = make(map[int][][]byte)
-	// TODO: maps for size 6.
+	mt.proofSets[6] = make(map[int][][]byte)
+	mt.proofSets[6][2] = [][]byte{
+		mt.data[2],
+		mt.leaves[3],
+		mt.roots[2],
+		mt.join(
+			mt.leaves[4],
+			mt.leaves[5],
+		),
+	}
 
 	mt.proofSets[7] = make(map[int][][]byte)
 	mt.proofSets[7][5] = [][]byte{
