@@ -4,8 +4,7 @@ go:
  - 1.4.1
 
 install:
- - make dependencies
- - test -z "$(go fmt ./...)"
+ - test -z "$(go fmt)"
  - make
 
 script: make test && make benchmark
