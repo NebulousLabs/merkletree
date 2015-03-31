@@ -31,6 +31,7 @@ type MerkleTester struct {
 // join returns the sha256 hash of a+b.
 func (mt *MerkleTester) join(a, b []byte) []byte {
 	return sum(sha256.New(), append(a, b...))
+	// return sum(sha256.New(), append(append([]byte{1}, a), b...))
 }
 
 // CreateMerkleTester creates a merkle tester and manually fills out many of
@@ -54,7 +55,7 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	}
 
 	// Manually build out expected merkle root values.
-	mt.roots[0] = []byte(nil)
+	mt.roots[0] = sum(sha256.New(), nil)
 	mt.roots[1] = mt.leaves[0]
 	mt.roots[2] = mt.join(mt.leaves[0], mt.leaves[1])
 	mt.roots[3] = mt.join(

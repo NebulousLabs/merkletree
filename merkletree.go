@@ -164,7 +164,7 @@ func (t *Tree) Push(data []byte) {
 func (t *Tree) Root() (root []byte) {
 	// If the Tree is empty, return nil.
 	if t.head == nil {
-		return nil
+		return sum(t.hash, nil)
 	}
 
 	// The root is formed by hashing together subTrees in order from least in
