@@ -96,7 +96,7 @@ func (t *Tree) Push(data []byte) {
 	// Hash the data, creating a subTree of height 1.
 	current := &subTree{
 		height: 1,
-		sum:    sum(t.hash, data),
+		sum:    sum(t.hash, append([]byte{0}, data...)),
 	}
 	// Check the height of the next subTree. If the height of the next subTree
 	// is the same as the height of the current subTree, combine the two
@@ -238,7 +238,7 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 	// The first element of the proof set is the original data. Hash it to get
 	// the first level subTree root.
 	height := 0
-	sum := sum(h, proofSet[height])
+	sum := sum(h, append([]byte{0}, proofSet[height]...))
 	height++
 
 	// A proof on a complete tree can be constructed by finding the two

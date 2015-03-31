@@ -51,7 +51,7 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 		mt.data = append(mt.data, []byte{byte(i)})
 	}
 	for i := 0; i < size; i++ {
-		mt.leaves = append(mt.leaves, sum(sha256.New(), mt.data[i]))
+		mt.leaves = append(mt.leaves, sum(sha256.New(), append([]byte{0}, mt.data[i]...)))
 	}
 
 	// Manually build out expected merkle root values.
