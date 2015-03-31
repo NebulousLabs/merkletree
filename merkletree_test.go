@@ -114,61 +114,78 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	mt.proofSets[1][0] = append([][]byte(nil), mt.data[0])
 
 	mt.proofSets[2] = make(map[int][][]byte)
-	mt.proofSets[2][0] = append(mt.proofSets[2][0], mt.data[0])
-	mt.proofSets[2][0] = append(mt.proofSets[2][0], mt.leaves[1])
+	mt.proofSets[2][0] = [][]byte{
+		mt.data[0],
+		mt.leaves[1],
+	}
 
-	mt.proofSets[2][1] = append(mt.proofSets[2][1], mt.data[1])
-	mt.proofSets[2][1] = append(mt.proofSets[2][1], mt.leaves[0])
+	mt.proofSets[2][1] = [][]byte{
+		mt.data[1],
+		mt.leaves[0],
+	}
 
 	mt.proofSets[5] = make(map[int][][]byte)
-	mt.proofSets[5][4] = append(mt.proofSets[5][4], mt.data[4])
-	mt.proofSets[5][4] = append(mt.proofSets[5][4], mt.roots[4])
+	mt.proofSets[5][4] = [][]byte{
+		mt.data[4],
+		mt.roots[4],
+	}
+
+	// mt.proofSet[6] = make(map[int][][]byte)
+	// TODO: maps for size 6.
 
 	mt.proofSets[7] = make(map[int][][]byte)
-	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.data[5])
-	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.leaves[4])
-	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.leaves[6])
-	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.roots[4])
+	mt.proofSets[7][5] = [][]byte{
+		mt.data[5],
+		mt.leaves[4],
+		mt.leaves[6],
+		mt.roots[4],
+	}
 
 	mt.proofSets[15] = make(map[int][][]byte)
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.data[3])
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.leaves[2])
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.roots[2])
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.join(
-		mt.join(mt.leaves[4], mt.leaves[5]),
-		mt.join(mt.leaves[6], mt.leaves[7]),
-	))
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.join(
+	mt.proofSets[15][3] = [][]byte{
+		mt.data[3],
+		mt.leaves[2],
+		mt.roots[2],
 		mt.join(
-			mt.join(mt.leaves[8], mt.leaves[9]),
-			mt.join(mt.leaves[10], mt.leaves[11]),
+			mt.join(mt.leaves[4], mt.leaves[5]),
+			mt.join(mt.leaves[6], mt.leaves[7]),
+		),
+		mt.join(
+			mt.join(
+				mt.join(mt.leaves[8], mt.leaves[9]),
+				mt.join(mt.leaves[10], mt.leaves[11]),
+			),
+			mt.join(
+				mt.join(mt.leaves[12], mt.leaves[13]),
+				mt.leaves[14],
+			),
+		),
+	}
+
+	mt.proofSets[15][10] = [][]byte{
+		mt.data[10],
+		mt.leaves[11],
+		mt.join(
+			mt.leaves[8],
+			mt.leaves[9],
 		),
 		mt.join(
 			mt.join(mt.leaves[12], mt.leaves[13]),
 			mt.leaves[14],
 		),
-	))
+		mt.roots[8],
+	}
 
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.data[10])
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.leaves[11])
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.join(
-		mt.leaves[8],
-		mt.leaves[9],
-	))
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.join(
-		mt.join(mt.leaves[12], mt.leaves[13]),
+	mt.proofSets[15][13] = [][]byte{
+		mt.data[13],
+		mt.leaves[12],
 		mt.leaves[14],
-	))
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.roots[8])
-
-	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.data[13])
-	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.leaves[12])
-	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.leaves[14])
-	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.join(
-		mt.join(mt.leaves[8], mt.leaves[9]),
-		mt.join(mt.leaves[10], mt.leaves[11]),
-	))
-	mt.proofSets[15][13] = append(mt.proofSets[15][13], mt.roots[8])
+		mt.join(
+			mt.join(mt.leaves[8], mt.leaves[9]),
+			mt.join(mt.leaves[10], mt.leaves[11]),
+		),
+		mt.roots[8],
+	}
 
 	return
 }
