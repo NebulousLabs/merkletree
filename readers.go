@@ -28,7 +28,8 @@ func readIntoTree(t *Tree, r io.Reader, segmentSize int) error {
 
 // ReaderRoot returns the Merkle root of the data read from the reader, where
 // each leaf is 'segmentSize' long and 'h' is used as the hashing function. All
-// leaves will be 'segmentSize' bytes, the last leaf may have extra zeros.
+// leaves will be 'segmentSize' bytes except the last leaf, which will not be
+// padded out if there are not enough bytes remaining in the reader.
 func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err error) {
 	tree := New(h)
 	err = readIntoTree(tree, r, segmentSize)
@@ -41,7 +42,9 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err err
 
 // BuildReaderProof returns a proof that certain data is in the merkle tree
 // created by the data in the reader. The merkle root, set of proofs, and the
-// number of leaves in the Merkle tree are all returned.
+// number of leaves in the Merkle tree are all returned. All leaves will we
+// 'segmentSize' bytes except the last leaf, which will not be padded out if
+// there are not enough bytes remaining in the reader.
 func BuildReaderProof(r io.Reader, h hash.Hash, segmentSize int, index uint64) (root []byte, proofSet [][]byte, numLeaves uint64, err error) {
 	tree := New(h)
 	tree.SetIndex(index)

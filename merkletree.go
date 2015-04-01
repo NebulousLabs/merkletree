@@ -51,10 +51,10 @@ func sum(h hash.Hash, data []byte) []byte {
 	return result
 }
 
-// join takes two byte slices, appends them, hashes them, and then returns the
-// result.
+// join takes two byte slices, appends them, prepends 0x01, hashes them, and
+// then returns the result.
 func join(h hash.Hash, a, b []byte) []byte {
-	return sum(h, append(a, b...))
+	return sum(h, append(append([]byte{1}, a...), b...))
 }
 
 // New initializes a Tree with a hash object, which will be used when hashing
@@ -93,11 +93,12 @@ func (t *Tree) Push(data []byte) {
 		t.proofSet = append(t.proofSet, data)
 	}
 
-	// Hash the data, creating a subTree of height 1.
+	// Prepend the data with 0x00 and hash it, creating a subTree of height 1.
 	current := &subTree{
 		height: 1,
-		sum:    sum(t.hash, data),
+		sum:    sum(t.hash, append([]byte{0}, data...)),
 	}
+
 	// Check the height of the next subTree. If the height of the next subTree
 	// is the same as the height of the current subTree, combine the two
 	// subTrees to create a subTree with a height that is 1 greater.
@@ -162,9 +163,9 @@ func (t *Tree) Push(data []byte) {
 // Asking for the root when no data has been added will return nil. The tree is
 // left unaltered.
 func (t *Tree) Root() (root []byte) {
-	// If the Tree is empty, return nil.
+	// If the Tree is empty, return the hash of the empty string.
 	if t.head == nil {
-		return nil
+		return sum(t.hash, nil)
 	}
 
 	// The root is formed by hashing together subTrees in order from least in
@@ -235,10 +236,10 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 		return false
 	}
 
-	// The first element of the proof set is the original data. Hash it to get
-	// the first level subTree root.
+	// The first element of the proof set is the original data. Prepend it with
+	// 0x00 and hash it to get the first level subTree root.
 	height := 0
-	sum := sum(h, proofSet[height])
+	sum := sum(h, append([]byte{0}, proofSet[height]...))
 	height++
 
 	// A proof on a complete tree can be constructed by finding the two
