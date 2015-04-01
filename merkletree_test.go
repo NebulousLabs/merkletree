@@ -28,10 +28,9 @@ type MerkleTester struct {
 	*testing.T
 }
 
-// join returns the sha256 hash of a+b.
+// join returns the sha256 hash of 0x01 || a || b.
 func (mt *MerkleTester) join(a, b []byte) []byte {
-	return sum(sha256.New(), append(a, b...))
-	// return sum(sha256.New(), append(append([]byte{1}, a), b...))
+	return sum(sha256.New(), append(append([]byte{1}, a...), b...))
 }
 
 // CreateMerkleTester creates a merkle tester and manually fills out many of

@@ -45,7 +45,7 @@ func TestReaderRootPadding(t *testing.T) {
 
 	baseLeft := sum(sha256.New(), []byte{0, 1, 2})
 	baseRight := sum(sha256.New(), []byte{0, 3})
-	expectedRoot = sum(sha256.New(), append(baseLeft, baseRight...))
+	expectedRoot = sum(sha256.New(), append(append([]byte{1}, baseLeft...), baseRight...))
 	if bytes.Compare(root, expectedRoot) != 0 {
 		t.Error("ReaderRoot returned the wrong root")
 	}

@@ -9,6 +9,9 @@ BitTorrent, for example, requires downloading many small pieces of a file from
 many untrusted peers; Merkle proofs allow the downloader to verify that each
 piece is part of the full file.
 
+When sha256 is used as the hashing algorithm, this merkle tree will match the
+merkle tree outlined in RFC 6962, 'Certificate Transparency'.
+
 Usage
 -----
 
