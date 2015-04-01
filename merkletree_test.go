@@ -114,52 +114,86 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	mt.proofSets[1][0] = append([][]byte(nil), mt.data[0])
 
 	mt.proofSets[2] = make(map[int][][]byte)
-	mt.proofSets[2][0] = append(mt.proofSets[2][0], mt.data[0])
-	mt.proofSets[2][0] = append(mt.proofSets[2][0], mt.leaves[1])
+	mt.proofSets[2][0] = [][]byte{
+		mt.data[0],
+		mt.leaves[1],
+	}
 
-	mt.proofSets[2][1] = append(mt.proofSets[2][1], mt.data[1])
-	mt.proofSets[2][1] = append(mt.proofSets[2][1], mt.leaves[0])
+	mt.proofSets[2][1] = [][]byte{
+		mt.data[1],
+		mt.leaves[0],
+	}
 
 	mt.proofSets[5] = make(map[int][][]byte)
-	mt.proofSets[5][4] = append(mt.proofSets[5][4], mt.data[4])
-	mt.proofSets[5][4] = append(mt.proofSets[5][4], mt.roots[4])
+	mt.proofSets[5][4] = [][]byte{
+		mt.data[4],
+		mt.roots[4],
+	}
+
+	mt.proofSets[6] = make(map[int][][]byte)
+	mt.proofSets[6][2] = [][]byte{
+		mt.data[2],
+		mt.leaves[3],
+		mt.roots[2],
+		mt.join(
+			mt.leaves[4],
+			mt.leaves[5],
+		),
+	}
 
 	mt.proofSets[7] = make(map[int][][]byte)
-	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.data[5])
-	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.leaves[4])
-	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.leaves[6])
-	mt.proofSets[7][5] = append(mt.proofSets[7][5], mt.roots[4])
+	mt.proofSets[7][5] = [][]byte{
+		mt.data[5],
+		mt.leaves[4],
+		mt.leaves[6],
+		mt.roots[4],
+	}
 
 	mt.proofSets[15] = make(map[int][][]byte)
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.data[3])
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.leaves[2])
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.roots[2])
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.join(
-		mt.join(mt.leaves[4], mt.leaves[5]),
-		mt.join(mt.leaves[6], mt.leaves[7]),
-	))
-	mt.proofSets[15][3] = append(mt.proofSets[15][3], mt.join(
+	mt.proofSets[15][3] = [][]byte{
+		mt.data[3],
+		mt.leaves[2],
+		mt.roots[2],
 		mt.join(
-			mt.join(mt.leaves[8], mt.leaves[9]),
-			mt.join(mt.leaves[10], mt.leaves[11]),
+			mt.join(mt.leaves[4], mt.leaves[5]),
+			mt.join(mt.leaves[6], mt.leaves[7]),
+		),
+		mt.join(
+			mt.join(
+				mt.join(mt.leaves[8], mt.leaves[9]),
+				mt.join(mt.leaves[10], mt.leaves[11]),
+			),
+			mt.join(
+				mt.join(mt.leaves[12], mt.leaves[13]),
+				mt.leaves[14],
+			),
+		),
+	}
+
+	mt.proofSets[15][10] = [][]byte{
+		mt.data[10],
+		mt.leaves[11],
+		mt.join(
+			mt.leaves[8],
+			mt.leaves[9],
 		),
 		mt.join(
 			mt.join(mt.leaves[12], mt.leaves[13]),
 			mt.leaves[14],
 		),
-	))
+		mt.roots[8],
+	}
 
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.data[10])
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.leaves[11])
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.join(
-		mt.leaves[8],
-		mt.leaves[9],
-	))
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.join(
-		mt.join(mt.leaves[12], mt.leaves[13]),
+	mt.proofSets[15][13] = [][]byte{
+		mt.data[13],
+		mt.leaves[12],
 		mt.leaves[14],
-	))
-	mt.proofSets[15][10] = append(mt.proofSets[15][10], mt.roots[8])
+		mt.join(
+			mt.join(mt.leaves[8], mt.leaves[9]),
+			mt.join(mt.leaves[10], mt.leaves[11]),
+		),
+		mt.roots[8],
+	}
 
 	return
 }
@@ -322,14 +356,16 @@ func TestBadInputs(t *testing.T) {
 
 // TestCompatibility runs BuildProof for a large set of trees, and checks that
 // verify affirms each proof, while rejecting for all other indexes (this
-// second half requires that all input data be unique).
+// second half requires that all input data be unique). The test checks that
+// build and verify are internally consistent, but doesn't check for actual
+// correctness.
 func TestCompatibility(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
 
 	// Brute force all trees up to size 'max'. Running time for this test is max^3.
-	max := uint64(32)
+	max := uint64(65)
 	tree := New(sha256.New())
 	for i := uint64(1); i < max; i++ {
 		// Try with proof at every possible index.
@@ -363,7 +399,7 @@ func TestCompatibility(t *testing.T) {
 	}
 }
 
-// BenchmarkSha256_4MB runs a benchmark on hashing 4MB using sha256.
+// BenchmarkSha256_4MB uses sha256 to hash 4mb of data.
 func BenchmarkSha256_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
 	rand.Read(data)
@@ -374,9 +410,9 @@ func BenchmarkSha256_4MB(b *testing.B) {
 	}
 }
 
-// BenchmarkTree64Sha256 runs a benchmark on creating a Merkle tree out of 4MB
-// using 64 bytes at a time, using sha256 as the hashing algorithm.
-func BenchmarkTree64Sha256(b *testing.B) {
+// BenchmarkTree64_4MB creates a Merkle tree out of 4MB using a segment size of
+// 64 bytes, using sha256.
+func BenchmarkTree64_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
 	rand.Read(data)
 	segmentSize := 64
@@ -391,9 +427,9 @@ func BenchmarkTree64Sha256(b *testing.B) {
 	}
 }
 
-// BenchmarkTree4kSha256 runs a benchmark on creating a Merkle tree out of 4MB
-// using 4k bytes at a time, using sha256 as the hashing algorithm.
-func BenchmarkTree4kSha256(b *testing.B) {
+// BenchmarkTree4k_4MB creates a Merkle tree out of 4MB using a segment size of
+// 4096 bytes, using sha256.
+func BenchmarkTree4k_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
 	rand.Read(data)
 	segmentSize := 4096

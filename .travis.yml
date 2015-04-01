@@ -1,0 +1,10 @@
+language: go
+
+go:
+ - 1.4.2
+
+install:
+ - test -z "$(go fmt)"
+ - make
+
+script: make test && make benchmark

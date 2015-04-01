@@ -142,6 +142,20 @@ func (t *Tree) Push(data []byte) {
 	current.next = t.head
 	t.head = current
 	t.currentIndex++
+
+	// Sanity check - From head to tail of the stack, the height should be
+	// strictly increasing.
+	if DEBUG {
+		current := t.head
+		height := current.height
+		for current.next != nil {
+			current = current.next
+			if current.height <= height {
+				panic("subtrees are out of order")
+			}
+			height = current.height
+		}
+	}
 }
 
 // Root returns the Merkle root of the data that has been pushed into the Tree.
