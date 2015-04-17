@@ -16,9 +16,9 @@ install: fmt REBUILD
 	go install
 
 test: fmt REBUILD
-	go test -v -tags=debug -timeout=60s
+	go test -v -tags=debug -timeout=180s
 test-short: fmt REBUILD
-	go test -short -v -tags=debug -timeout=60s
+	go test -short -v -tags=debug -timeout=6s
 
 cover: REBUILD
 	go test -v -tags=debug -cover -coverprofile=cover.out
