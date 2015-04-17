@@ -111,7 +111,7 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	// Manually build out some proof sets that should should match what the
 	// Tree creates for the same values.
 	mt.proofSets[1] = make(map[int][][]byte)
-	mt.proofSets[1][0] = append([][]byte(nil), mt.data[0])
+	mt.proofSets[1][0] = [][]byte{mt.data[0]}
 
 	mt.proofSets[2] = make(map[int][][]byte)
 	mt.proofSets[2][0] = [][]byte{
@@ -361,7 +361,7 @@ func TestBadInputs(t *testing.T) {
 // correctness.
 func TestCompatibility(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.SkipNow()
 	}
 
 	// Brute force all trees up to size 'max'. Running time for this test is max^3.
