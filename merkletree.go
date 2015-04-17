@@ -13,22 +13,18 @@ import (
 // A Tree takes data as leaves and returns the merkle root. Each call to 'Push'
 // adds one leaf to the merkle tree. Calling 'Root' returns the Merkle root.
 // The Tree also constructs proof that a single leaf is a part of the tree. The
-// leaf can be chosen with 'SetIndex'.
+// leaf can be chosen with 'SetIndex'. The memory footprint of Tree grows in
+// O(log(n)) in the number of leaves.
 type Tree struct {
 	head *subTree
 	hash hash.Hash
 
-	// Variables to help build proofs that the data at 'proofIndex' is in the
-	// merkle tree.
+	// Helper variables used to construct proofs that the data at 'proofIndex'
+	// is in the merkle tree.
 	currentIndex uint64
 	proofIndex   uint64
 	proofSet     [][]byte
 }
-
-// A subTree is a subTree in the Tree. 'height' refers to how tall the subTree
-// is. The children of the tree are not accessible, as they have already been
-// hashed into 'sum'. 'next' is the next subTree, and is guaranteed to have
-// a higher height unless it is nil.
 
 // A subTree contains the merkle root of a complete (2^n leaves) subTree of
 // the Tree. 'sum' is the Merkle root of the subTree. If 'next' is not nil, it
@@ -51,10 +47,28 @@ func sum(h hash.Hash, data []byte) []byte {
 	return result
 }
 
-// join takes two byte slices, appends them, prepends 0x01, hashes them, and
-// then returns the result.
-func join(h hash.Hash, a, b []byte) []byte {
+func joinNode(h hash.Hash, a, b []byte) []byte {
 	return sum(h, append(append([]byte{1}, a...), b...))
+}
+
+// joinSubTrees combines two equal sized subTrees into a larger subTree. As
+// specified in RFC6962, the 'sum' of the new subtree is calculated using:
+// 		Hash( 0x01 || subTreeA || subTreeB).
+func (t *Tree) joinSubTrees(a, b *subTree) *subTree {
+	if DEBUG {
+		if b.next != a {
+			panic("invalid subtree join - 'a' is not paried with 'b'")
+		}
+		if a.height < b.height {
+			panic("invalid subtree presented - height mismatch")
+		}
+	}
+
+	return &subTree{
+		next:   a.next,
+		height: a.height + 1,
+		sum:    sum(t.hash, append(append([]byte{1}, a.sum...), b.sum...)),
+	}
 }
 
 // New initializes a Tree with a hash object, which will be used when hashing
@@ -95,6 +109,7 @@ func (t *Tree) Push(data []byte) {
 
 	// Prepend the data with 0x00 and hash it, creating a subTree of height 1.
 	current := &subTree{
+		next:   t.head,
 		height: 1,
 		sum:    sum(t.hash, append([]byte{0}, data...)),
 	}
@@ -134,13 +149,11 @@ func (t *Tree) Push(data []byte) {
 
 		// Join the two subTrees into one subTree with a greater height. Then
 		// compare the new subTree to the next subTree.
-		current.sum = join(t.hash, t.head.sum, current.sum)
-		current.height++
+		current = t.joinSubTrees(t.head, current)
 		t.head = t.head.next
 	}
 
 	// Add the subTree to the top of the stack.
-	current.next = t.head
 	t.head = current
 	t.currentIndex++
 
@@ -160,24 +173,22 @@ func (t *Tree) Push(data []byte) {
 }
 
 // Root returns the Merkle root of the data that has been pushed into the Tree.
-// Asking for the root when no data has been added will return nil. The tree is
-// left unaltered.
-func (t *Tree) Root() (root []byte) {
+// As specified in RFC6962, and emtpy tree will return the hash of an empty
+// string.
+func (t *Tree) Root() []byte {
 	// If the Tree is empty, return the hash of the empty string.
 	if t.head == nil {
 		return sum(t.hash, nil)
 	}
 
 	// The root is formed by hashing together subTrees in order from least in
-	// height to greatest in height. To preserve ordering, the larger subTree
-	// needs to be first in the combination.
+	// height to greatest in height. To preserve the ordering specified in
+	// RFC6962, the taller subTree needs to be the first argument of 'join'.
 	current := t.head
-	root = current.sum
 	for current.next != nil {
-		root = join(t.hash, current.next.sum, root)
-		current = current.next
+		current = t.joinSubTrees(current.next, current)
 	}
-	return root
+	return current.sum
 }
 
 // Prove returns a proof that the data at index 'proofIndex' is an element in
@@ -202,12 +213,10 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 
 	// Iterate through all of the smaller subTrees and combine them.
 	current := t.head
-	sum := current.sum
 	for current.next != nil && current.next.height < len(proofSet) {
-		// Combine this subTree with the next subTree.
-		sum = join(t.hash, current.next.sum, sum)
-		current = current.next
+		current = t.joinSubTrees(current.next, current)
 	}
+	sum := current.sum
 
 	// If the current subTree is the last subTree before the subTree containing
 	// the proof index, add the root of the subTree to the proof set.
@@ -230,17 +239,23 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 
 // VerifyProof takes a Merkle root, a proofSet, and a proofIndex and returns
 // true if the first element of the proof set is a leaf of data in the Merkle
-// root.
+// root. False is returned if the proof set or merkle root is nil, and if
+// 'numLeaves' equals 0.
 func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) bool {
-	if len(proofSet) == 0 || merkleRoot == nil || numLeaves == 0 {
+	// Return false for nonsense input.
+	switch {
+	case len(proofSet) == 0:
+		return false
+	case merkleRoot == nil:
+		return false
+	case numLeaves == 0:
 		return false
 	}
 
-	// The first element of the proof set is the original data. Prepend it with
-	// 0x00 and hash it to get the first level subTree root.
-	height := 0
-	sum := sum(h, append([]byte{0}, proofSet[height]...))
-	height++
+	// The first element of the set is the original data, whose node is created
+	// by appending 0x00 and taking the hash, replicating the node at height 1.
+	sum := sum(h, append([]byte{0}, proofSet[0]...))
+	height := 1
 
 	// A proof on a complete tree can be constructed by finding the two
 	// relevant subTrees of each height and determining which subTree contains
@@ -289,9 +304,9 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 		levelStart := (adjustedProveIndex / levelSize) * levelSize
 		mid := levelStart + (levelSize / 2)
 		if adjustedProveIndex < mid {
-			sum = join(h, sum, proofSet[height])
+			sum = joinNode(h, sum, proofSet[height])
 		} else {
-			sum = join(h, proofSet[height], sum)
+			sum = joinNode(h, proofSet[height], sum)
 		}
 		height++
 	}
@@ -302,7 +317,7 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 		if len(proofSet) <= height {
 			return false
 		}
-		sum = join(h, sum, proofSet[height])
+		sum = joinNode(h, sum, proofSet[height])
 		height++
 	}
 
@@ -311,7 +326,7 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 		if len(proofSet) <= height {
 			return false
 		}
-		sum = join(h, proofSet[height], sum)
+		sum = joinNode(h, proofSet[height], sum)
 		height++
 	}
 
