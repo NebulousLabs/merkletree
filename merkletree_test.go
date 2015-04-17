@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
+	"math/big"
+	"strconv"
 	"testing"
 )
 
@@ -111,7 +113,7 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	// Manually build out some proof sets that should should match what the
 	// Tree creates for the same values.
 	mt.proofSets[1] = make(map[int][][]byte)
-	mt.proofSets[1][0] = append([][]byte(nil), mt.data[0])
+	mt.proofSets[1][0] = [][]byte{mt.data[0]}
 
 	mt.proofSets[2] = make(map[int][][]byte)
 	mt.proofSets[2][0] = [][]byte{
@@ -131,6 +133,19 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	}
 
 	mt.proofSets[6] = make(map[int][][]byte)
+	mt.proofSets[6][0] = [][]byte{
+		mt.data[0],
+		mt.leaves[1],
+		mt.join(
+			mt.leaves[2],
+			mt.leaves[3],
+		),
+		mt.join(
+			mt.leaves[4],
+			mt.leaves[5],
+		),
+	}
+
 	mt.proofSets[6][2] = [][]byte{
 		mt.data[2],
 		mt.leaves[3],
@@ -139,6 +154,18 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 			mt.leaves[4],
 			mt.leaves[5],
 		),
+	}
+
+	mt.proofSets[6][4] = [][]byte{
+		mt.data[4],
+		mt.leaves[5],
+		mt.roots[4],
+	}
+
+	mt.proofSets[6][5] = [][]byte{
+		mt.data[5],
+		mt.leaves[4],
+		mt.roots[4],
 	}
 
 	mt.proofSets[7] = make(map[int][][]byte)
@@ -352,6 +379,9 @@ func TestBadInputs(t *testing.T) {
 	if VerifyProof(sha256.New(), mt.roots[15], mt.proofSets[15][10][1:], 10, 15) {
 		t.Error("VerifyPRoof should return false for too-short proof set")
 	}
+	if VerifyProof(sha256.New(), mt.roots[15], mt.proofSets[15][10], 15, 0) {
+		t.Error("VerifyPRoof should return false when numLeaves is 0")
+	}
 }
 
 // TestCompatibility runs BuildProof for a large set of trees, and checks that
@@ -361,11 +391,11 @@ func TestBadInputs(t *testing.T) {
 // correctness.
 func TestCompatibility(t *testing.T) {
 	if testing.Short() {
-		t.Skip()
+		t.SkipNow()
 	}
 
 	// Brute force all trees up to size 'max'. Running time for this test is max^3.
-	max := uint64(65)
+	max := uint64(129)
 	tree := New(sha256.New())
 	for i := uint64(1); i < max; i++ {
 		// Try with proof at every possible index.
@@ -395,6 +425,38 @@ func TestCompatibility(t *testing.T) {
 					t.Error("proof verified for indices", i, j, k)
 				}
 			}
+		}
+	}
+
+	// Check that proofs on larger trees are consistent.
+	for i := 0; i < 25; i++ {
+		// Determine a random size for the tree up to 64M elements.
+		sizeI, err := rand.Int(rand.Reader, big.NewInt(256e3))
+		if err != nil {
+			t.Fatal(err)
+		}
+		size := uint64(sizeI.Int64())
+
+		proofIndexI, err := rand.Int(rand.Reader, sizeI)
+		if err != nil {
+			t.Fatal(err)
+		}
+		proofIndex := uint64(proofIndexI.Int64())
+
+		// Prepare the tree.
+		tree.Reset()
+		tree.SetIndex(proofIndex)
+
+		// Insert 'size' unique elements.
+		for j := 0; j < int(size); j++ {
+			elem := []byte(strconv.Itoa(j))
+			tree.Push(elem)
+		}
+
+		// Get the proof for the tree and run it through verify.
+		merkleRoot, proofSet, proofIndex, numLeaves := tree.Prove()
+		if !VerifyProof(sha256.New(), merkleRoot, proofSet, proofIndex, numLeaves) {
+			t.Error("proof didn't verify in long test", size, proofIndex)
 		}
 	}
 }

@@ -1,7 +1,8 @@
 // merkletree provides tools for calculating the Merkle root of a dataset, for
 // creating a proof that a piece of data is in a Merkle tree of a given root,
 // and for verifying proofs that a piece of data is in a Merkle tree of a given
-// root.
+// root. The tree is implemented according to the specification for Merkle
+// trees provided in RFC 6962.
 package merkletree
 
 import (
@@ -10,36 +11,41 @@ import (
 	"hash"
 )
 
-// A Tree takes data as leaves and returns the merkle root. Each call to 'Push'
-// adds one leaf to the merkle tree. Calling 'Root' returns the Merkle root.
+// A Tree takes data as leaves and returns the Merkle root. Each call to 'Push'
+// adds one leaf to the Merkle tree. Calling 'Root' returns the Merkle root.
 // The Tree also constructs proof that a single leaf is a part of the tree. The
-// leaf can be chosen with 'SetIndex'.
+// leaf can be chosen with 'SetIndex'. The memory footprint of Tree grows in
+// O(log(n)) in the number of leaves.
 type Tree struct {
+	// The Tree is stored as a stack of subtrees. Each subtree has a height,
+	// and is the Merkle root of 2^height leaves. A Tree with 11 nodes is
+	// represented as a subtree of height 3 (8 nodes), a subtree of height 1 (2
+	// nodes), and a subtree of height 0 (1 node). Head points to the smallest
+	// tree. When a new leaf is inserted, it is inserted as a subtree of height
+	// 0. If there is another subtree of the same height, both can be removed,
+	// combined, and then inserted as a subtree of height n + 1.
 	head *subTree
 	hash hash.Hash
 
-	// Variables to help build proofs that the data at 'proofIndex' is in the
-	// merkle tree.
+	// Helper variables used to construct proofs that the data at 'proofIndex'
+	// is in the Merkle tree. The proofSet is constructed as elements are being
+	// added to the tree. The first element of the proof set is the original
+	// data used to create the leaf at index 'proofIndex'.
 	currentIndex uint64
 	proofIndex   uint64
 	proofSet     [][]byte
 }
 
-// A subTree is a subTree in the Tree. 'height' refers to how tall the subTree
-// is. The children of the tree are not accessible, as they have already been
-// hashed into 'sum'. 'next' is the next subTree, and is guaranteed to have
-// a higher height unless it is nil.
-
-// A subTree contains the merkle root of a complete (2^n leaves) subTree of
-// the Tree. 'sum' is the Merkle root of the subTree. If 'next' is not nil, it
-// will be a tree with a higher height.
+// A subTree contains the Merkle root of a complete (2^height leaves) subTree
+// of the Tree. 'sum' is the Merkle root of the subTree. If 'next' is not nil,
+// it will be a tree with a higher height.
 type subTree struct {
 	next   *subTree
 	height int
 	sum    []byte
 }
 
-// sum returns the hash of the input data.
+// sum returns the hash of the input data using the specified algorithm.
 func sum(h hash.Hash, data []byte) []byte {
 	if data == nil {
 		return nil
@@ -51,10 +57,36 @@ func sum(h hash.Hash, data []byte) []byte {
 	return result
 }
 
-// join takes two byte slices, appends them, prepends 0x01, hashes them, and
-// then returns the result.
-func join(h hash.Hash, a, b []byte) []byte {
+// leafSum returns the hash created from data inserted to form a leaf. Leaf
+// sums are calculated using:
+//		Hash( 0x00 || data)
+func leafSum(h hash.Hash, data []byte) []byte {
+	return sum(h, append([]byte{0}, data...))
+}
+
+// nodeSum returns the hash created from two sibling nodes being combined into
+// a parent node. Node sums are calculated using:
+//		Hash( 0x01 || left sibling sum || right sibling sum)
+func nodeSum(h hash.Hash, a, b []byte) []byte {
 	return sum(h, append(append([]byte{1}, a...), b...))
+}
+
+// joinSubTrees combines two equal sized subTrees into a larger subTree.
+func (t *Tree) joinSubTrees(a, b *subTree) *subTree {
+	if DEBUG {
+		if b.next != a {
+			panic("invalid subtree join - 'a' is not paired with 'b'")
+		}
+		if a.height < b.height {
+			panic("invalid subtree presented - height mismatch")
+		}
+	}
+
+	return &subTree{
+		next:   a.next,
+		height: a.height + 1,
+		sum:    nodeSum(t.hash, a.sum, b.sum),
+	}
 }
 
 // New initializes a Tree with a hash object, which will be used when hashing
@@ -73,8 +105,8 @@ func (t *Tree) Reset() {
 	t.proofSet = nil
 }
 
-// SetIndex resets the tree, and then sets the index for which a proof that the
-// element is in the Tree will be built.
+// SetIndex must be called on an empty Tree. Trees can be emptied by calling
+// Reset.
 func (t *Tree) SetIndex(i uint64) error {
 	if t.head != nil {
 		return errors.New("cannot call SetIndex on Tree if Tree has not been reset")
@@ -86,62 +118,56 @@ func (t *Tree) SetIndex(i uint64) error {
 // Push adds a leaf to the tree by hashing the input and then inserting the
 // result as a leaf.
 func (t *Tree) Push(data []byte) {
-	// The first element of a proof is the original data at a leaf. If the
-	// current index is the index for which we are creating a proof, save the
-	// data.
+	// The first element of a proof is the data at the proof index. If this
+	// data is being inserted at the proof index, it is added to the proof set.
 	if t.currentIndex == t.proofIndex {
 		t.proofSet = append(t.proofSet, data)
 	}
 
-	// Prepend the data with 0x00 and hash it, creating a subTree of height 1.
-	current := &subTree{
-		height: 1,
-		sum:    sum(t.hash, append([]byte{0}, data...)),
+	// Hash the data to create a subtree of height 0.
+	t.head = &subTree{
+		next:   t.head,
+		height: 0,
+		sum:    leafSum(t.hash, data),
 	}
 
-	// Check the height of the next subTree. If the height of the next subTree
-	// is the same as the height of the current subTree, combine the two
-	// subTrees to create a subTree with a height that is 1 greater.
-	for t.head != nil && current.height == t.head.height {
-		// When creating a proof for a specific index, you need to collect one
-		// hash at each height of the tree, and that hash will be found in the
-		// same subTree as the initial leaf. Before we hit that index, this
-		// logic will be ignored because len(proofSet) will be 0. After we hit
-		// that index, len(proofSet) will be one. From that point forward,
-		// every time there are two subTrees (the current one and the previous
-		// one) that have a height equal to len(proofSet) we will need to grab
-		// one of the roots and add it to the proof set.
-		if current.height == len(t.proofSet) {
-			// Either the root of the current subTree or the root of the
-			// previous subTree needs to be added to the proof set. We want to
-			// grab the root of the subTree that does not contain
-			// 't.proofIndex'. We do this by finding the starting index of the
-			// current subTree and comparing it to 't.proofIndex'.
-			//
-			// The start of the first subTree can be determined by rounding
-			// the currentIndex down to the nearest (2^height). This represents
-			// the combined size of the two trees, as a tree of height 1 was
-			// built from only 1 leaf.
-			combinedSize := uint64(1 << uint(current.height))
-			previousStart := (t.currentIndex / combinedSize) * combinedSize
-			currentStart := previousStart + (combinedSize / 2)
-			if t.proofIndex < currentStart {
-				t.proofSet = append(t.proofSet, current.sum)
-			} else {
+	// Insert the subTree into the Tree. As long as the height of the next
+	// subTree is the same as the height of the current subTree, the two will
+	// be combined into a single subTree of height n+1.
+	for t.head.next != nil && t.head.height == t.head.next.height {
+		// Before combining subtrees, check whether one of the subtree hashes
+		// needs to be added to the proof set. This is going to be true IFF the
+		// subtrees being combined are one height higher than the previous
+		// subtree added to the proof set. The height of the previous subtree
+		// added to the proof set is equal to len(t.proofSet) - 1.
+		if t.head.height == len(t.proofSet)-1 {
+			// One of the subtrees needs to be added to the proof set. The
+			// subtree that needs to be added is the subtree that does not
+			// contain the proofIndex. Because the subtrees being compared are
+			// the smallest and rightmost trees in the Tree, this can be
+			// determined by rounding the currentIndex down to the number of
+			// nodes in the subtree and comparing that index to the proofIndex.
+			leaves := uint64(1 << uint(t.head.height))
+			mid := (t.currentIndex / leaves) * leaves
+			if t.proofIndex < mid {
 				t.proofSet = append(t.proofSet, t.head.sum)
+			} else {
+				t.proofSet = append(t.proofSet, t.head.next.sum)
+			}
+
+			// Sanity check - the proofIndex should never be less than the
+			// midpoint minus the number of leaves in each subtree.
+			if DEBUG {
+				if t.proofIndex < mid-leaves {
+					panic("proof being added with weird values")
+				}
 			}
 		}
 
 		// Join the two subTrees into one subTree with a greater height. Then
 		// compare the new subTree to the next subTree.
-		current.sum = join(t.hash, t.head.sum, current.sum)
-		current.height++
-		t.head = t.head.next
+		t.head = t.joinSubTrees(t.head.next, t.head)
 	}
-
-	// Add the subTree to the top of the stack.
-	current.next = t.head
-	t.head = current
 	t.currentIndex++
 
 	// Sanity check - From head to tail of the stack, the height should be
@@ -160,24 +186,20 @@ func (t *Tree) Push(data []byte) {
 }
 
 // Root returns the Merkle root of the data that has been pushed into the Tree.
-// Asking for the root when no data has been added will return nil. The tree is
-// left unaltered.
-func (t *Tree) Root() (root []byte) {
+func (t *Tree) Root() []byte {
 	// If the Tree is empty, return the hash of the empty string.
 	if t.head == nil {
 		return sum(t.hash, nil)
 	}
 
 	// The root is formed by hashing together subTrees in order from least in
-	// height to greatest in height. To preserve ordering, the larger subTree
-	// needs to be first in the combination.
+	// height to greatest in height. The taller subtree is the first subtree in
+	// the join.
 	current := t.head
-	root = current.sum
 	for current.next != nil {
-		root = join(t.hash, current.next.sum, root)
-		current = current.next
+		current = t.joinSubTrees(current.next, current)
 	}
-	return root
+	return current.sum
 }
 
 // Prove returns a proof that the data at index 'proofIndex' is an element in
@@ -191,36 +213,51 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 	}
 	proofSet = t.proofSet
 
-	// The hashes have already been provided for the largest complete subTree
-	// that contains 't.ProveIndex'. If 't.CurrentIndex' is a power of two, we
-	// are already finshed. Otherwise, two sets of hashes remain which need to
-	// be added to the proof. The first is the hashes of the smaller subTrees.
-	// All of the smaller subTrees need to be combined, and then that hash
-	// needs to be saved. The second is the larger subTrees. The root of each
-	// of the larger subTrees needs to be saved. The subTree with the proof
-	// index will have a height equal to the current length of the proof set.
+	// The set of subtrees must now be collapsed into a single root. The proof
+	// set already contains all of the elements that are members of a complete
+	// subtree. Of what remains, there will be at most 1 element provided from
+	// a sibling on the right, and all of the other proofs will be provided
+	// from a sibling on the left. This results from the way orphans are
+	// treated. All subtrees smaller than the subtree containing the proofIndex
+	// will be combined into a single subtree that gets combined with the
+	// proofIndex subtree as a single right sibling. All subtrees larger than
+	// the subtree containing the proofIndex will be combined with the subtree
+	// containing the proof index as left siblings.
 
-	// Iterate through all of the smaller subTrees and combine them.
+	// Start at the smallest subtree and combine it with larger subtrees until
+	// it would be combining with the subtree that contains the proof index. We
+	// can recognize the subtree containing the proof index because the height
+	// of that subtree will be one less than the current length of the proof
+	// set.
 	current := t.head
-	sum := current.sum
-	for current.next != nil && current.next.height < len(proofSet) {
-		// Combine this subTree with the next subTree.
-		sum = join(t.hash, current.next.sum, sum)
+	for current.next != nil && current.next.height < len(proofSet)-1 {
+		current = t.joinSubTrees(current.next, current)
+	}
+
+	// Sanity check - check that either 'current' or 'current.next' is the
+	// subtree containing the proof index.
+	if DEBUG {
+		if current.height != len(t.proofSet)-1 && (current.next != nil && current.next.height != len(t.proofSet)-1) {
+			panic("could not find the subtree containing the proof index")
+		}
+	}
+
+	// If the current subtree is not the subtree containing the proof index,
+	// then it must be an aggregate subtree that is to the right of the subtree
+	// containing the proof index, and the next subtree is the subtree
+	// containing the proof index.
+	if current.next != nil && current.next.height == len(proofSet)-1 {
+		proofSet = append(proofSet, current.sum)
 		current = current.next
 	}
 
-	// If the current subTree is the last subTree before the subTree containing
-	// the proof index, add the root of the subTree to the proof set.
-	if current.next != nil && current.next.height == len(proofSet) {
-		proofSet = append(proofSet, sum)
-		current = current.next
-	}
-
-	// The subTree containing the proof index needs to be skipped.
+	// The current subtree must be the subtre containing the proof index. This
+	// subtree does not need an entry, as the entry was created during the
+	// construction of the Tree. Instead, skip to the next subtree.
 	current = current.next
 
-	// Now add the roots of all subTrees that are larger than the subTree
-	// containing the proof index.
+	// All remaning subtrees will be added to the proof set as a left sibling,
+	// completeing the proof set.
 	for current != nil {
 		proofSet = append(proofSet, current.sum)
 		current = current.next
@@ -230,94 +267,120 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 
 // VerifyProof takes a Merkle root, a proofSet, and a proofIndex and returns
 // true if the first element of the proof set is a leaf of data in the Merkle
-// root.
+// root. False is returned if the proof set or Merkle root is nil, and if
+// 'numLeaves' equals 0.
 func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) bool {
-	if len(proofSet) == 0 || merkleRoot == nil || numLeaves == 0 {
+	// Return false for nonsense input. A switch statement is used so that the
+	// cover tool will reveal if a case is not covered by the test suite. This
+	// would not be possible using a single if statement due to the limitations
+	// of the cover tool.
+	switch {
+	case merkleRoot == nil:
+		return false
+	case numLeaves == 0:
 		return false
 	}
 
-	// The first element of the proof set is the original data. Prepend it with
-	// 0x00 and hash it to get the first level subTree root.
+	// In a Merkle tree, every node except the root node has a sibling.
+	// Combining the two siblings in the correct order will create the parent
+	// node. Each of the remaining hashes in the proof set is a sibling to a
+	// node that can be built from all of the previous elements of the proof
+	// set. The next node is built by taking:
+	//
+	//		H(0x01 || sibling A || sibling B)
+	//
+	// The difficulty of the algorithm lies in determining whether the supplied
+	// hash is sibling A or sibling B. This information can be determined by
+	// using the proof index and the total number of leaves in the tree.
+	//
+	// A pair of two siblings forms a subtree. The subtree is complete if it
+	// has 1 << height total leaves. When the subtree is complete, the position
+	// of the proof index within the subtree can be determined by looking at
+	// the bounds of the subtree and determining if the proof index is in the
+	// first or second half of the subtree.
+	//
+	// When the subtree is not complete, either 1 or 0 of the remaining hashes
+	// will be sibling B. All remaining hashes after that will be sibling A.
+	// This is true because of the way that orphans are merged into the Merkle
+	// tree - an orphan at height n is elevated to height n + 1, and only
+	// hashed when it is no longer an orphan. Each subtree will therefore merge
+	// with at most 1 orphan to the right before becoming an orphan itself.
+	// Orphan nodes are always merged with larger subtrees to the left.
+	//
+	// One vulnerability with the proof verification is that the proofSet may
+	// not be long enough. Before looking at an element of proofSet, a check
+	// needs to be made that the element exists.
+
+	// The first element of the set is the original data. A sibling at height 1
+	// is created by getting the leafSum of the original data.
 	height := 0
-	sum := sum(h, append([]byte{0}, proofSet[height]...))
+	if len(proofSet) <= height {
+		return false
+	}
+	sum := leafSum(h, proofSet[height])
 	height++
 
-	// A proof on a complete tree can be constructed by finding the two
-	// relevant subTrees of each height and determining which subTree contains
-	// the proof index. If the subTree that comes first contains the proof
-	// index, you set sum equal to H(sum || proofSet[height]), otherwise you
-	// set it equal to H(proofSet[height] || sum).
-	//
-	// Verification starts by searching for the subTree that contains the
-	// proofIndex, and applying the above algorithm. After that, any smaller
-	// subTrees can be accounted for by setting sum equal to H(sum ||
-	// proofSet[height]) (skip if there are no smaller subTrees). For each
-	// larger subTree, set sum equal to H(proofSet[height] || sum). At this
-	// point, the proof is complete. If there are any elements in the proof set
-	// that haven't been used, return false. If 'sum' == 'merkleRoot', return
-	// true.
-
-	// The code starts by counting the number of larger subTrees while figuring
-	// out which subTree contains the proofIndex.
-	leavesSkipped := uint64(0)
-	largerSubTrees := uint64(0)
-	subTreeSize := uint64(1)
+	// While the current subtree (of height 'height') is complete, determine
+	// the position of the next sibling using the complete subtree algorithm.
+	// 'stableEnd' tells us the ending index of the last full subtree. It gets
+	// initialized to 'proofIndex' because the first full subtree was the
+	// subtree of height 1, created above (and had an ending index of
+	// 'proofIndex').
+	stableEnd := proofIndex
 	for {
-		subTreeSize = 1
-		for subTreeSize*2 <= numLeaves-leavesSkipped {
-			subTreeSize *= 2
-		}
-
-		if proofIndex-leavesSkipped < subTreeSize {
+		// Determine if the subtree is complete. This is accomplished by
+		// rounding down the proofIndex to the nearest 1 << 'height', adding 1
+		// << 'height', and comparing the result to the number of leaves in the
+		// Merkle tree.
+		subTreeStartIndex := (proofIndex / (1 << uint(height))) * (1 << uint(height)) // round down to the nearest 1 << height
+		subTreeEndIndex := subTreeStartIndex + (1 << (uint(height))) - 1              // subtract 1 because the start index is inclusive
+		if subTreeEndIndex >= numLeaves {
+			// If the Merkle tree does not have a leaf at index
+			// 'subTreeEndIndex', then the subtree of the current height is not
+			// a complete subtree.
 			break
 		}
-		leavesSkipped += subTreeSize
-		largerSubTrees++
-	}
+		stableEnd = subTreeEndIndex
 
-	// relativePosition descrives the starting point of the subTree that
-	// contains the proof index. The for loop will iterate once per level of
-	// the subTree. Each level, find the pair of nodes that contain the proof
-	// index and then determine which of those two contains the proof index.
-	adjustedProveIndex := proofIndex - leavesSkipped
-	for uint64(1<<uint(height)) <= subTreeSize {
-		// Check that there are enough items in the proof set.
+		// Sanity check - the proof index should be between the start and end
+		// index of the subtree (inclusive).
+		if DEBUG {
+			if proofIndex < subTreeStartIndex {
+				panic("weird proof verifying")
+			}
+			if proofIndex > subTreeEndIndex {
+				panic("weird proof verifying")
+			}
+		}
+
+		// Determine if the proofIndex is in the first or the second half of
+		// the subtree.
 		if len(proofSet) <= height {
 			return false
 		}
-		levelSize := uint64(1 << uint(height))
-		levelStart := (adjustedProveIndex / levelSize) * levelSize
-		mid := levelStart + (levelSize / 2)
-		if adjustedProveIndex < mid {
-			sum = join(h, sum, proofSet[height])
+		if proofIndex-subTreeStartIndex < 1<<uint(height-1) {
+			sum = nodeSum(h, sum, proofSet[height])
 		} else {
-			sum = join(h, proofSet[height], sum)
+			sum = nodeSum(h, proofSet[height], sum)
 		}
 		height++
 	}
 
-	// If there is a smaller subTree, account for the hash that gets included
-	// in the proof.
-	if subTreeSize < numLeaves-leavesSkipped {
+	// Determine if the next hash belongs to an orphan that was elevated. This
+	// is the case IFF 'stableEnd' (the last index of the largest full subtree)
+	// is equal to the number of leaves in the Merkle tree.
+	if stableEnd != numLeaves-1 {
 		if len(proofSet) <= height {
 			return false
 		}
-		sum = join(h, sum, proofSet[height])
+		sum = nodeSum(h, sum, proofSet[height])
 		height++
 	}
 
-	// Include a hash for each larger subTree.
-	for i := uint64(0); i < largerSubTrees; i++ {
-		if len(proofSet) <= height {
-			return false
-		}
-		sum = join(h, proofSet[height], sum)
+	// All remaining elements in the proof set will belong to a left sibling.
+	for height < len(proofSet) {
+		sum = nodeSum(h, proofSet[height], sum)
 		height++
-	}
-
-	// If there are still elements remaining in the proof set, return false.
-	if len(proofSet) > height {
-		return false
 	}
 
 	// Compare our calculated Merkle root to the desired Merkle root.
