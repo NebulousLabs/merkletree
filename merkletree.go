@@ -11,14 +11,14 @@ import (
 	"hash"
 )
 
-// A Tree takes data as leaves and returns the merkle root. Each call to 'Push'
-// adds one leaf to the merkle tree. Calling 'Root' returns the Merkle root.
+// A Tree takes data as leaves and returns the Merkle root. Each call to 'Push'
+// adds one leaf to the Merkle tree. Calling 'Root' returns the Merkle root.
 // The Tree also constructs proof that a single leaf is a part of the tree. The
 // leaf can be chosen with 'SetIndex'. The memory footprint of Tree grows in
 // O(log(n)) in the number of leaves.
 type Tree struct {
 	// The Tree is stored as a stack of subtrees. Each subtree has a height,
-	// and is the Merkle root of 2^height) leaves. A Tree with 11 nodes is
+	// and is the Merkle root of 2^height leaves. A Tree with 11 nodes is
 	// represented as a subtree of height 3 (8 nodes), a subtree of height 1 (2
 	// nodes), and a subtree of height 0 (1 node). Head points to the smallest
 	// tree. When a new leaf is inserted, it is inserted as a subtree of height
@@ -28,7 +28,7 @@ type Tree struct {
 	hash hash.Hash
 
 	// Helper variables used to construct proofs that the data at 'proofIndex'
-	// is in the merkle tree. The proofSet is constructed as elements are being
+	// is in the Merkle tree. The proofSet is constructed as elements are being
 	// added to the tree. The first element of the proof set is the original
 	// data used to create the leaf at index 'proofIndex'.
 	currentIndex uint64
@@ -36,7 +36,7 @@ type Tree struct {
 	proofSet     [][]byte
 }
 
-// A subTree contains the merkle root of a complete (2^height leaves) subTree
+// A subTree contains the Merkle root of a complete (2^height leaves) subTree
 // of the Tree. 'sum' is the Merkle root of the subTree. If 'next' is not nil,
 // it will be a tree with a higher height.
 type subTree struct {
@@ -75,7 +75,7 @@ func nodeSum(h hash.Hash, a, b []byte) []byte {
 func (t *Tree) joinSubTrees(a, b *subTree) *subTree {
 	if DEBUG {
 		if b.next != a {
-			panic("invalid subtree join - 'a' is not paried with 'b'")
+			panic("invalid subtree join - 'a' is not paired with 'b'")
 		}
 		if a.height < b.height {
 			panic("invalid subtree presented - height mismatch")
@@ -267,10 +267,13 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 
 // VerifyProof takes a Merkle root, a proofSet, and a proofIndex and returns
 // true if the first element of the proof set is a leaf of data in the Merkle
-// root. False is returned if the proof set or merkle root is nil, and if
+// root. False is returned if the proof set or Merkle root is nil, and if
 // 'numLeaves' equals 0.
 func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) bool {
-	// Return false for nonsense input.
+	// Return false for nonsense input. A switch statement is used so that the
+	// cover tool will reveal if a case is not covered by the test suite. This
+	// would not be possible using a single if statement due to the limitations
+	// of the cover tool.
 	switch {
 	case merkleRoot == nil:
 		return false
@@ -278,7 +281,7 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 		return false
 	}
 
-	// In a merkle tree, every node except the root node has a sibling.
+	// In a Merkle tree, every node except the root node has a sibling.
 	// Combining the two siblings in the correct order will create the parent
 	// node. Each of the remaining hashes in the proof set is a sibling to a
 	// node that can be built from all of the previous elements of the proof
@@ -365,7 +368,7 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 
 	// Determine if the next hash belongs to an orphan that was elevated. This
 	// is the case IFF 'stableEnd' (the last index of the largest full subtree)
-	// is equal to the number of leaves in the merkle tree.
+	// is equal to the number of leaves in the Merkle tree.
 	if stableEnd != numLeaves-1 {
 		if len(proofSet) <= height {
 			return false
