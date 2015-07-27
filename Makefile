@@ -1,21 +1,9 @@
 all: install
 
-clean:
-	rm cover.html
-
-dependencies:
-	go get -u golang.org/x/tools/cmd/cover
-
-fmt:
-	go fmt
-
-REBUILD:
-	@touch debug*.go
-
-install: fmt REBUILD
+install: REBUILD
 	go install
 
-test: fmt REBUILD
+test: REBUILD
 	go test -v -tags=debug -timeout=180s
 test-short: fmt REBUILD
 	go test -short -v -tags=debug -timeout=6s
@@ -25,5 +13,5 @@ cover: REBUILD
 	go tool cover -html=cover.out -o=cover.html
 	rm cover.out
 
-benchmark: fmt REBUILD
-	go test -run=XXX -v -bench=.
+benchmark: REBUILD
+	go test -v -bench=.

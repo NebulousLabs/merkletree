@@ -1,8 +1,8 @@
-// merkletree provides tools for calculating the Merkle root of a dataset, for
-// creating a proof that a piece of data is in a Merkle tree of a given root,
-// and for verifying proofs that a piece of data is in a Merkle tree of a given
-// root. The tree is implemented according to the specification for Merkle
-// trees provided in RFC 6962.
+// Package merkletree provides tools for calculating the Merkle root of a
+// dataset, for creating a proof that a piece of data is in a Merkle tree of a
+// given root, and for verifying proofs that a piece of data is in a Merkle
+// tree of a given root. The tree is implemented according to the specification
+// for Merkle trees provided in RFC 6962.
 package merkletree
 
 import (
@@ -386,7 +386,6 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 	// Compare our calculated Merkle root to the desired Merkle root.
 	if bytes.Compare(sum, merkleRoot) == 0 {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
