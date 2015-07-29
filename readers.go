@@ -1,6 +1,7 @@
 package merkletree
 
 import (
+	"errors"
 	"hash"
 	"io"
 )
@@ -53,5 +54,9 @@ func BuildReaderProof(r io.Reader, h hash.Hash, segmentSize int, index uint64) (
 		return
 	}
 	root, proofSet, _, numLeaves = tree.Prove()
+	if len(proofSet) == 0 {
+		err = errors.New("index was not reached while creating proof")
+		return
+	}
 	return
 }

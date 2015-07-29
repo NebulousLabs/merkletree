@@ -277,7 +277,7 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 	switch {
 	case merkleRoot == nil:
 		return false
-	case numLeaves == 0:
+	case proofIndex >= numLeaves:
 		return false
 	}
 

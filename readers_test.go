@@ -101,3 +101,12 @@ func TestBuildReaderProofPadding(t *testing.T) {
 		t.Error("wrong number of leaves returned")
 	}
 }
+
+// TestEmptyReader passes an empty reader into BuildReaderProof.
+func TestEmptyReader(t *testing.T) {
+	reader := bytes.NewReader([]byte{})
+	_, _, _, err := BuildReaderProof(reader, sha256.New(), 64, 5)
+	if err == nil {
+		t.Error(err)
+	}
+}

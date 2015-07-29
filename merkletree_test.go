@@ -461,6 +461,25 @@ func TestCompatibility(t *testing.T) {
 	}
 }
 
+// TestLeafCounts checks that the number of leaves in the tree are being
+// reported correctly.
+func TestLeafCounts(t *testing.T) {
+	tree := New(sha256.New())
+	tree.SetIndex(0)
+	_, _, _, leaves := tree.Prove()
+	if leaves != 0 {
+		t.Error("bad reporting of leaf count")
+	}
+
+	tree = New(sha256.New())
+	tree.SetIndex(0)
+	tree.Push([]byte{})
+	_, _, _, leaves = tree.Prove()
+	if leaves != 1 {
+		t.Error("bad reporting on leaf count")
+	}
+}
+
 // BenchmarkSha256_4MB uses sha256 to hash 4mb of data.
 func BenchmarkSha256_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
