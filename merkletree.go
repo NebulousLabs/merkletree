@@ -342,17 +342,6 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 		}
 		stableEnd = subTreeEndIndex
 
-		// Sanity check - the proof index should be between the start and end
-		// index of the subtree (inclusive).
-		if DEBUG {
-			if proofIndex < subTreeStartIndex {
-				panic("weird proof verifying")
-			}
-			if proofIndex > subTreeEndIndex {
-				panic("weird proof verifying")
-			}
-		}
-
 		// Determine if the proofIndex is in the first or the second half of
 		// the subtree.
 		if len(proofSet) <= height {
