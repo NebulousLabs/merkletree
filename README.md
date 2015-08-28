@@ -31,7 +31,7 @@ func main() {
 	// Example 1: Get the merkle root of a file.
 	segmentSize := 4096 // bytes per leaf
 	file, _ := os.Open("myfile")
-	merkleRoot, _ := merkleTree.ReaderRoot(file, sha256.New(), segmentSize)
+	merkleRoot, _ := merkletree.ReaderRoot(file, sha256.New(), segmentSize)
 
 	// Example 2: Build and verify a proof that the element at segment 7 is in
 	// the merkle root.
