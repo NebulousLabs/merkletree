@@ -6,9 +6,11 @@ import (
 	"io"
 )
 
-// readIntoTree will read segments of size 'segmentSize' and push them into the
-// tree until EOF is reached.
-func readIntoTree(t *Tree, r io.Reader, segmentSize int) error {
+// ReadAll will read segments of size 'segmentSize' and push them into the tree
+// until EOF is reached. Success will return 'err == nil', not 'err == EOF'. No
+// padding is added to the data, so the last element may be smaller than
+// 'segmentSize'.
+func (t *Tree) ReadAll(r io.Reader, segmentSize int) error {
 	for {
 		segment := make([]byte, segmentSize)
 		n, readErr := io.ReadFull(r, segment)
@@ -33,7 +35,7 @@ func readIntoTree(t *Tree, r io.Reader, segmentSize int) error {
 // padded out if there are not enough bytes remaining in the reader.
 func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err error) {
 	tree := New(h)
-	err = readIntoTree(tree, r, segmentSize)
+	err = tree.ReadAll(r, segmentSize)
 	if err != nil {
 		return
 	}
@@ -49,7 +51,7 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err err
 func BuildReaderProof(r io.Reader, h hash.Hash, segmentSize int, index uint64) (root []byte, proofSet [][]byte, numLeaves uint64, err error) {
 	tree := New(h)
 	tree.SetIndex(index)
-	err = readIntoTree(tree, r, segmentSize)
+	err = tree.ReadAll(r, segmentSize)
 	if err != nil {
 		return
 	}
