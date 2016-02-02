@@ -4,11 +4,19 @@
 // tree of a given root. The tree is implemented according to the specification
 // for Merkle trees provided in RFC 6962.
 //
-// As a recent addition, package merkletree also supports building roots and
-// proofs from cached merkle trees. A cached merkle tree will saves all of the
-// nodes at some height, such as height 16. While this incurs a linear storage
-// cost in the size of the data, it prevents having to rehash the data any time
-// some portion of the data changes or anytime that a proof needs to be
-// created. The computational savings are often great enough to justify the
-// storage tradeoff.
+// Package merkletree also supports building roots and proofs from cached
+// subroots of the Merkle tree. For example, a large file could be cached by
+// building the Merkle root for each 4MB sector and remembering the Merkle
+// roots of each sector. Using a cached tree, the Merkle root of the whole file
+// can be computed by passing the cached tree each of the roots of the 4MB
+// sector. Building proofs using these cached roots is also supported. A proof
+// must be build within the target sector using a normal Tree, requiring the
+// whole sector to be hashed. The results of that proof can then be passed into
+// the Prove() function of a cached tree, which will create the full proof
+// without needing to hash the entire file.
+//
+// Cacheing also makes it inexpensive to update the Merkle root of the file
+// after changing or deleting segments of the larger file.
+//
+// Examples can be found in the README for the package.
 package merkletree
