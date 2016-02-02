@@ -17,24 +17,6 @@ import (
 // number of leaves per cached node.
 type CachedTree Tree
 
-// joinSubTrees combines two equal sized subTrees into a larger subTree.
-func (ct *CachedTree) joinSubTrees(a, b *subTree) *subTree {
-	if DEBUG {
-		if b.next != a {
-			panic("invalid subtree join - 'a' is not paired with 'b'")
-		}
-		if a.height < b.height {
-			panic("invalid subtree presented - height mismatch")
-		}
-	}
-
-	return &subTree{
-		next:   a.next,
-		height: a.height + 1,
-		sum:    nodeSum(ct.hash, a.sum, b.sum),
-	}
-}
-
 // NewCachedTree initializes a CachedTree with a hash object, which will be
 // used when hashing the input. The hash must match the hash that was used in
 // the original tree.
@@ -118,7 +100,7 @@ func (ct *CachedTree) Push(data []byte) {
 
 		// Join the two subTrees into one subTree with a greater height. Then
 		// compare the new subTree to the next subTree.
-		ct.head = ct.joinSubTrees(ct.head.next, ct.head)
+		ct.head = joinSubTrees(ct.hash, ct.head.next, ct.head)
 	}
 	ct.currentIndex++
 
@@ -151,7 +133,7 @@ func (ct *CachedTree) Root() []byte {
 	// the join.
 	current := ct.head
 	for current.next != nil {
-		current = ct.joinSubTrees(current.next, current)
+		current = joinSubTrees(ct.hash, current.next, current)
 	}
 	return current.sum
 }
@@ -187,7 +169,7 @@ func (ct *CachedTree) Prove(cachedProofSet [][]byte, cachedProofIndex, cachedNod
 	// set.
 	current := ct.head
 	for current.next != nil && current.next.height < len(proofSet)-1 {
-		current = ct.joinSubTrees(current.next, current)
+		current = joinSubTrees(ct.hash, current.next, current)
 	}
 
 	// Sanity check - check that either 'current' or 'current.next' is the

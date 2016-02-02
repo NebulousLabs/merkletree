@@ -85,7 +85,7 @@ func nodeSum(h hash.Hash, a, b []byte) []byte {
 }
 
 // joinSubTrees combines two equal sized subTrees into a larger subTree.
-func (t *Tree) joinSubTrees(a, b *subTree) *subTree {
+func joinSubTrees(h hash.Hash, a, b *subTree) *subTree {
 	if DEBUG {
 		if b.next != a {
 			panic("invalid subtree join - 'a' is not paired with 'b'")
@@ -98,7 +98,7 @@ func (t *Tree) joinSubTrees(a, b *subTree) *subTree {
 	return &subTree{
 		next:   a.next,
 		height: a.height + 1,
-		sum:    nodeSum(t.hash, a.sum, b.sum),
+		sum:    nodeSum(h, a.sum, b.sum),
 	}
 }
 
@@ -179,7 +179,7 @@ func (t *Tree) Push(data []byte) {
 
 		// Join the two subTrees into one subTree with a greater height. Then
 		// compare the new subTree to the next subTree.
-		t.head = t.joinSubTrees(t.head.next, t.head)
+		t.head = joinSubTrees(t.hash, t.head.next, t.head)
 	}
 	t.currentIndex++
 
@@ -210,7 +210,7 @@ func (t *Tree) Root() []byte {
 	// the join.
 	current := t.head
 	for current.next != nil {
-		current = t.joinSubTrees(current.next, current)
+		current = joinSubTrees(t.hash, current.next, current)
 	}
 	return current.sum
 }
@@ -244,7 +244,7 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 	// set.
 	current := t.head
 	for current.next != nil && current.next.height < len(proofSet)-1 {
-		current = t.joinSubTrees(current.next, current)
+		current = joinSubTrees(t.hash, current.next, current)
 	}
 
 	// Sanity check - check that either 'current' or 'current.next' is the
