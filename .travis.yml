@@ -1,16 +1,16 @@
 language: go
 
 go:
-  - 1.4.2
+  - 1.5.3
 
 install:
   - go get -u github.com/golang/lint/golint
+  - go get -u github.com/kisielk/errcheck
   - go get -u golang.org/x/tools/cmd/cover
   - go get -u golang.org/x/tools/cmd/vet
   - test -z "$(go fmt)"
   - test -z "$(golint)"
-  - test -z "$(go vet)"
 
-script: go test -v -tags=debug -bench=. && go test -covermode=atomic && go install
+script: errcheck && go vet && go test -v -tags=debug -bench=. && go test -covermode=atomic && go install
 
 sudo: false
