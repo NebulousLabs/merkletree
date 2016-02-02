@@ -41,7 +41,7 @@ type Tree struct {
 // it will be a tree with a higher height.
 type subTree struct {
 	next   *subTree
-	height int
+	height int // Int is okay because a height over 300 is physically unachievable.
 	sum    []byte
 }
 

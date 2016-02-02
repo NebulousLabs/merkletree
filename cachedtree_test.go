@@ -6,6 +6,27 @@ import (
 	"testing"
 )
 
+// addSubTree will create a subtree of the desired height using the dataSeed to
+// seed the data. addSubTree will add the data created in the subtree to the
+// Tree as well. The tree must have the proveIndex set separately.
+func addSubTree(height uint64, dataSeed []byte, subtreeProveIndex uint64, fullTree *Tree) (subTree *Tree) {
+	data := sum(sha256.New(), dataSeed)
+	leaves := 1 << height
+
+	subTree = New(sha256.New())
+	err := subTree.SetIndex(subtreeProveIndex)
+	if err != nil {
+		panic(err)
+	}
+
+	for i := 0; i < leaves; i++ {
+		subTree.Push(data)
+		fullTree.Push(data)
+		data = sum(sha256.New(), data)
+	}
+	return subTree
+}
+
 // TestCachedTreeConstruction checks that a CachedTree will correctly build to
 // the same merkle root as the Tree when using caches at various heights and
 // lengths.
@@ -30,7 +51,7 @@ func TestCachedTreeConstruction(t *testing.T) {
 	}
 
 	// Try comparing the root of a cached tree with one element, where the
-	// cache height is 1.
+	// cache height is 0.
 	tree.Reset()
 	cachedTree.Reset()
 	tree.Push(arbData[0])
@@ -474,5 +495,62 @@ func TestCachedTreeConstruction(t *testing.T) {
 	_, proofSet, proofIndex, numLeaves = cachedTree.Prove(subTreeProofSet, 1, 2) // Intentional mistake.
 	if VerifyProof(sha256.New(), root, proofSet, proofIndex, numLeaves) {
 		t.Error("naive proof was unsuccessful")
+	}
+}
+
+// TestCachedTreeConstructionAuto uses automation to build out a wide set of
+// trees of different types to make sure the Cached Tree maintains consistency
+// with the actual tree.
+func TestCachedTreeConstructionAuto(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+
+	// Build out cached trees with up to 33 cached elements, each height 'h'.
+	for h := uint64(0); h < 5; h++ {
+		n := uint64(1) << h
+		for i := uint64(0); i < 35; i++ {
+			// Try creating a proof at each index.
+			for j := uint64(0); j < i*n; j++ {
+				tree := New(sha256.New())
+				err := tree.SetIndex(j)
+				if err != nil {
+					t.Fatal(err)
+				}
+				cachedTree := NewCachedTree(sha256.New())
+				err = cachedTree.SetIndex(j / n)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var subProof [][]byte
+
+				// Build out 'i' subtrees that form the components of the cached
+				// tree.
+				for k := uint64(0); k < i; k++ {
+					subtree := addSubTree(uint64(h), []byte{byte(k)}, j%n, tree)
+					cachedTree.Push(subtree.Root())
+					if bytes.Compare(tree.Root(), cachedTree.Root()) != 0 {
+						t.Error("naive 1-height Tree and Cached tree roots do not match")
+					}
+
+					// Get the proof of the subtree
+					if k == j/n {
+						_, subProof, _, _ = subtree.Prove()
+					}
+				}
+
+				// Verify that the tree was built correctly.
+				treeRoot, treeProof, treeProofIndex, treeLeaves := tree.Prove()
+				if !VerifyProof(sha256.New(), treeRoot, treeProof, treeProofIndex, treeLeaves) {
+					t.Error("tree problems", i, j)
+				}
+
+				// Verify that the cached tree was built correctly.
+				cachedRoot, cachedProof, cachedProofIndex, cachedLeaves := cachedTree.Prove(subProof, j%n, h)
+				if !VerifyProof(sha256.New(), cachedRoot, cachedProof, cachedProofIndex, cachedLeaves) {
+					t.Error("cached tree problems", i, j)
+				}
+			}
+		}
 	}
 }
