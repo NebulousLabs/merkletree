@@ -42,6 +42,12 @@ type Tree struct {
 	currentIndex uint64
 	proofIndex   uint64
 	proofSet     [][]byte
+
+	// The cachedTree flag indicates that the tree is cached, meaning that
+	// different code is used in 'Push' for creating a new head subtree. Adding
+	// this flag is somewhat gross, but eliminates needing to duplicate the
+	// entire 'Push' function when writing the cached tree.
+	cachedTree bool
 }
 
 // A subTree contains the Merkle root of a complete (2^height leaves) subTree
@@ -110,24 +116,6 @@ func New(h hash.Hash) *Tree {
 	}
 }
 
-// Reset returns the tree to its inital, empty state.
-func (t *Tree) Reset() {
-	t.head = nil
-	t.currentIndex = 0
-	t.proofIndex = 0
-	t.proofSet = nil
-}
-
-// SetIndex must be called on an empty Tree. Trees can be emptied by calling
-// Reset.
-func (t *Tree) SetIndex(i uint64) error {
-	if t.head != nil {
-		return errors.New("cannot call SetIndex on Tree if Tree has not been reset")
-	}
-	t.proofIndex = i
-	return nil
-}
-
 // Push adds a leaf to the tree by hashing the input and then inserting the
 // result as a leaf.
 func (t *Tree) Push(data []byte) {
@@ -137,11 +125,18 @@ func (t *Tree) Push(data []byte) {
 		t.proofSet = append(t.proofSet, data)
 	}
 
-	// Hash the data to create a subtree of height 0.
+	// Hash the data to create a subtree of height 0. The sum of the new node
+	// is going to be the data for cached trees, and is going to be the result
+	// of calling leafSum() on the data for standard trees. Doing a check here
+	// prevents needing to duplicate the entire 'Push' function for the trees.
 	t.head = &subTree{
 		next:   t.head,
 		height: 0,
-		sum:    leafSum(t.hash, data),
+	}
+	if t.cachedTree {
+		t.head.sum = data
+	} else {
+		t.head.sum = leafSum(t.hash, data)
 	}
 
 	// Insert the subTree into the Tree. As long as the height of the next
@@ -264,7 +259,7 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 		current = current.next
 	}
 
-	// The current subtree must be the subtre containing the proof index. This
+	// The current subtree must be the subtree containing the proof index. This
 	// subtree does not need an entry, as the entry was created during the
 	// construction of the Tree. Instead, skip to the next subtree.
 	current = current.next
@@ -276,6 +271,24 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 		current = current.next
 	}
 	return t.Root(), proofSet, t.proofIndex, t.currentIndex
+}
+
+// Reset returns the tree to its inital, empty state.
+func (t *Tree) Reset() {
+	t.head = nil
+	t.currentIndex = 0
+	t.proofIndex = 0
+	t.proofSet = nil
+}
+
+// SetIndex must be called on an empty Tree. Trees can be emptied by calling
+// Reset.
+func (t *Tree) SetIndex(i uint64) error {
+	if t.head != nil {
+		return errors.New("cannot call SetIndex on Tree if Tree has not been reset")
+	}
+	t.proofIndex = i
+	return nil
 }
 
 // VerifyProof takes a Merkle root, a proofSet, and a proofIndex and returns
