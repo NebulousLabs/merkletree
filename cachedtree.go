@@ -15,19 +15,7 @@ import (
 // elements added to the cached tree must be at the same height, meaning that
 // the original Tree must have a number of leaves that is a factor of the
 // number of leaves per cached node.
-type CachedTree struct {
-	// Internally, the CachedTree operates much like the Tree, with the notable
-	// exception that new leaves are treated differently - the CachedTree will
-	// use 'nodeSum' for all operations, where the Tree will use 'leafSum' for
-	// leaves.
-
-	head *subTree
-	hash hash.Hash
-
-	currentIndex uint64
-	proofIndex   uint64
-	proofSet     [][]byte
-}
+type CachedTree Tree
 
 // joinSubTrees combines two equal sized subTrees into a larger subTree.
 func (ct *CachedTree) joinSubTrees(a, b *subTree) *subTree {
