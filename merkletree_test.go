@@ -445,7 +445,10 @@ func TestCompatibility(t *testing.T) {
 
 		// Prepare the tree.
 		tree.Reset()
-		tree.SetIndex(proofIndex)
+		err = tree.SetIndex(proofIndex)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		// Insert 'size' unique elements.
 		for j := 0; j < int(size); j++ {
@@ -465,14 +468,20 @@ func TestCompatibility(t *testing.T) {
 // reported correctly.
 func TestLeafCounts(t *testing.T) {
 	tree := New(sha256.New())
-	tree.SetIndex(0)
+	err := tree.SetIndex(0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, _, _, leaves := tree.Prove()
 	if leaves != 0 {
 		t.Error("bad reporting of leaf count")
 	}
 
 	tree = New(sha256.New())
-	tree.SetIndex(0)
+	err = tree.SetIndex(0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tree.Push([]byte{})
 	_, _, _, leaves = tree.Prove()
 	if leaves != 1 {
@@ -483,7 +492,10 @@ func TestLeafCounts(t *testing.T) {
 // BenchmarkSha256_4MB uses sha256 to hash 4mb of data.
 func BenchmarkSha256_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
-	rand.Read(data)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -495,7 +507,10 @@ func BenchmarkSha256_4MB(b *testing.B) {
 // 64 bytes, using sha256.
 func BenchmarkTree64_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
-	rand.Read(data)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
 	segmentSize := 64
 
 	b.ResetTimer()
@@ -512,7 +527,10 @@ func BenchmarkTree64_4MB(b *testing.B) {
 // 4096 bytes, using sha256.
 func BenchmarkTree4k_4MB(b *testing.B) {
 	data := make([]byte, 4*1024*1024)
-	rand.Read(data)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
 	segmentSize := 4096
 
 	b.ResetTimer()

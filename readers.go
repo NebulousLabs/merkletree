@@ -50,7 +50,10 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err err
 // there are not enough bytes remaining in the reader.
 func BuildReaderProof(r io.Reader, h hash.Hash, segmentSize int, index uint64) (root []byte, proofSet [][]byte, numLeaves uint64, err error) {
 	tree := New(h)
-	tree.SetIndex(index)
+	err = tree.SetIndex(index)
+	if err != nil {
+		return
+	}
 	err = tree.ReadAll(r, segmentSize)
 	if err != nil {
 		return
