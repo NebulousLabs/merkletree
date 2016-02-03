@@ -11,7 +11,7 @@ install: REBUILD
 	go install
 
 test: REBUILD
-	go test -v -tags='debug' -timeout=180s
+	go test -v -tags='debug' -timeout=600s
 test-short: REBUILD
 	go test -short -v -tags='debug' -timeout=6s
 
