@@ -156,8 +156,8 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 	// construction of the Tree. Instead, skip to the next subtree.
 	current = current.next
 
-	// All remaning subtrees will be added to the proof set as a left sibling,
-	// completeing the proof set.
+	// All remaining subtrees will be added to the proof set as a left sibling,
+	// completing the proof set.
 	for current != nil {
 		proofSet = append(proofSet, current.sum)
 		current = current.next

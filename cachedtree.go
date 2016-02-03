@@ -54,7 +54,7 @@ func (ct *CachedTree) Prove(cachedProofSet [][]byte) (merkleRoot []byte, proofSe
 	// The full proof set is going to be the input cachedProofSet combined with
 	// the tail proof set. The one caveat is that the tail proof set has an
 	// extra piece of data at the first element - the verifier will assume that
-	// this data exists and therefore it needs to be ommitted from the proof
+	// this data exists and therefore it needs to be omitted from the proof
 	// set.
 	proofSet = append(cachedProofSet, proofSetTail[1:]...)
 	return merkleRoot, proofSet, ct.trueProofIndex, numLeaves

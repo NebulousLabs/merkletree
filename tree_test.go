@@ -12,17 +12,17 @@ import (
 // A MerkleTester contains data types that can be filled out manually to
 // compare against function results.
 type MerkleTester struct {
-	// data is the raw data of the merkle tree.
+	// data is the raw data of the Merkle tree.
 	data [][]byte
 
 	// leaves is the hashes of the data, and should be the same length.
 	leaves [][]byte
 
-	// roots contains the root hashes of merkle trees of various heights using
+	// roots contains the root hashes of Merkle trees of various heights using
 	// the data for input.
 	roots map[int][]byte
 
-	// proofSets contains proofs that certain data is in a merkle tree. The
+	// proofSets contains proofs that certain data is in a Merkle tree. The
 	// first map is the number of leaves in the tree that the proof is for. The
 	// root of that tree can be found in roots. The second map is the
 	// proofIndex that was used when building the proof.
@@ -35,8 +35,8 @@ func (mt *MerkleTester) join(a, b []byte) []byte {
 	return sum(sha256.New(), append(append([]byte{1}, a...), b...))
 }
 
-// CreateMerkleTester creates a merkle tester and manually fills out many of
-// the expected values for constructing merkle tree roots and merkle tree
+// CreateMerkleTester creates a Merkle tester and manually fills out many of
+// the expected values for constructing Merkle tree roots and Merkle tree
 // proofs. These manual values can then be compared against the values that the
 // Tree creates.
 func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
@@ -55,7 +55,7 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 		mt.leaves = append(mt.leaves, sum(sha256.New(), append([]byte{0}, mt.data[i]...)))
 	}
 
-	// Manually build out expected merkle root values.
+	// Manually build out expected Merkle root values.
 	mt.roots[0] = sum(sha256.New(), nil)
 	mt.roots[1] = mt.leaves[0]
 	mt.roots[2] = mt.join(mt.leaves[0], mt.leaves[1])
@@ -231,7 +231,7 @@ func TestBuildRoot(t *testing.T) {
 	mt := CreateMerkleTester(t)
 
 	// Compare the results of calling Root against all of the manually
-	// constructed merkle trees.
+	// constructed Merkle trees.
 	tree := New(sha256.New())
 	for i, root := range mt.roots {
 		// Fill out the tree.
@@ -256,7 +256,7 @@ func TestBuildRoot(t *testing.T) {
 func TestBuildAndVerifyProof(t *testing.T) {
 	mt := CreateMerkleTester(t)
 
-	// Compare the results of building a merkle proof to all of the manually
+	// Compare the results of building a Merkle proof to all of the manually
 	// constructed proofs.
 	tree := New(sha256.New())
 	for i, manualProveSets := range mt.proofSets {
