@@ -94,16 +94,82 @@ func joinSubTrees(h hash.Hash, a, b *subTree) *subTree {
 	}
 }
 
-// New initializes a Tree with a hash object, which will be used when hashing
-// the input.
+// New creates a new Tree. The provided hash will be used for all hashing
+// operations within the Tree.
 func New(h hash.Hash) *Tree {
 	return &Tree{
 		hash: h,
 	}
 }
 
-// Push adds a leaf to the tree by hashing the input and then inserting the
-// result as a leaf.
+// Prove creates a proof that the leaf at the established index (established by
+// SetIndex) is an element of the Merkle tree. Prove will return a nil proof
+// set if used incorrectly. Prove does not modify the Tree.
+func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) {
+	// Return nil if the Tree is empty, or if the proofIndex hasn't yet been
+	// reached.
+	if t.head == nil || len(t.proofSet) == 0 {
+		return t.Root(), nil, t.proofIndex, t.currentIndex
+	}
+	proofSet = t.proofSet
+
+	// The set of subtrees must now be collapsed into a single root. The proof
+	// set already contains all of the elements that are members of a complete
+	// subtree. Of what remains, there will be at most 1 element provided from
+	// a sibling on the right, and all of the other proofs will be provided
+	// from a sibling on the left. This results from the way orphans are
+	// treated. All subtrees smaller than the subtree containing the proofIndex
+	// will be combined into a single subtree that gets combined with the
+	// proofIndex subtree as a single right sibling. All subtrees larger than
+	// the subtree containing the proofIndex will be combined with the subtree
+	// containing the proof index as left siblings.
+
+	// Start at the smallest subtree and combine it with larger subtrees until
+	// it would be combining with the subtree that contains the proof index. We
+	// can recognize the subtree containing the proof index because the height
+	// of that subtree will be one less than the current length of the proof
+	// set.
+	current := t.head
+	for current.next != nil && current.next.height < len(proofSet)-1 {
+		current = joinSubTrees(t.hash, current.next, current)
+	}
+
+	// Sanity check - check that either 'current' or 'current.next' is the
+	// subtree containing the proof index.
+	if DEBUG {
+		if current.height != len(t.proofSet)-1 && (current.next != nil && current.next.height != len(t.proofSet)-1) {
+			panic("could not find the subtree containing the proof index")
+		}
+	}
+
+	// If the current subtree is not the subtree containing the proof index,
+	// then it must be an aggregate subtree that is to the right of the subtree
+	// containing the proof index, and the next subtree is the subtree
+	// containing the proof index.
+	if current.next != nil && current.next.height == len(proofSet)-1 {
+		proofSet = append(proofSet, current.sum)
+		current = current.next
+	}
+
+	// The current subtree must be the subtree containing the proof index. This
+	// subtree does not need an entry, as the entry was created during the
+	// construction of the Tree. Instead, skip to the next subtree.
+	current = current.next
+
+	// All remaning subtrees will be added to the proof set as a left sibling,
+	// completeing the proof set.
+	for current != nil {
+		proofSet = append(proofSet, current.sum)
+		current = current.next
+	}
+	return t.Root(), proofSet, t.proofIndex, t.currentIndex
+}
+
+// Push will add data to the set, building out the Merkle tree and Root. The
+// tree does not remember all elements that are added, instead only keeping the
+// log(n) elements that are necessary to build the Merkle root and keeping the
+// log(n) elements necessary to build a proof that a piece of data is in the
+// Merkle tree.
 func (t *Tree) Push(data []byte) {
 	// The first element of a proof is the data at the proof index. If this
 	// data is being inserted at the proof index, it is added to the proof set.
@@ -179,7 +245,7 @@ func (t *Tree) Push(data []byte) {
 	}
 }
 
-// Root returns the Merkle root of the data that has been pushed into the Tree.
+// Root returns the Merkle root of the data that has been pushed.
 func (t *Tree) Root() []byte {
 	// If the Tree is empty, return the hash of the empty string.
 	if t.head == nil {
@@ -196,79 +262,8 @@ func (t *Tree) Root() []byte {
 	return current.sum
 }
 
-// Prove returns a proof that the data at index 'proofIndex' is an element in
-// the current Tree. The proof will be invalid if any more elements are added
-// to the tree after calling Prove. The tree is left unaltered.
-func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) {
-	// Return nil if the Tree is empty, or if the proofIndex hasn't yet been
-	// reached.
-	if t.head == nil || len(t.proofSet) == 0 {
-		return t.Root(), nil, t.proofIndex, t.currentIndex
-	}
-	proofSet = t.proofSet
-
-	// The set of subtrees must now be collapsed into a single root. The proof
-	// set already contains all of the elements that are members of a complete
-	// subtree. Of what remains, there will be at most 1 element provided from
-	// a sibling on the right, and all of the other proofs will be provided
-	// from a sibling on the left. This results from the way orphans are
-	// treated. All subtrees smaller than the subtree containing the proofIndex
-	// will be combined into a single subtree that gets combined with the
-	// proofIndex subtree as a single right sibling. All subtrees larger than
-	// the subtree containing the proofIndex will be combined with the subtree
-	// containing the proof index as left siblings.
-
-	// Start at the smallest subtree and combine it with larger subtrees until
-	// it would be combining with the subtree that contains the proof index. We
-	// can recognize the subtree containing the proof index because the height
-	// of that subtree will be one less than the current length of the proof
-	// set.
-	current := t.head
-	for current.next != nil && current.next.height < len(proofSet)-1 {
-		current = joinSubTrees(t.hash, current.next, current)
-	}
-
-	// Sanity check - check that either 'current' or 'current.next' is the
-	// subtree containing the proof index.
-	if DEBUG {
-		if current.height != len(t.proofSet)-1 && (current.next != nil && current.next.height != len(t.proofSet)-1) {
-			panic("could not find the subtree containing the proof index")
-		}
-	}
-
-	// If the current subtree is not the subtree containing the proof index,
-	// then it must be an aggregate subtree that is to the right of the subtree
-	// containing the proof index, and the next subtree is the subtree
-	// containing the proof index.
-	if current.next != nil && current.next.height == len(proofSet)-1 {
-		proofSet = append(proofSet, current.sum)
-		current = current.next
-	}
-
-	// The current subtree must be the subtree containing the proof index. This
-	// subtree does not need an entry, as the entry was created during the
-	// construction of the Tree. Instead, skip to the next subtree.
-	current = current.next
-
-	// All remaning subtrees will be added to the proof set as a left sibling,
-	// completeing the proof set.
-	for current != nil {
-		proofSet = append(proofSet, current.sum)
-		current = current.next
-	}
-	return t.Root(), proofSet, t.proofIndex, t.currentIndex
-}
-
-// Reset returns the tree to its inital, empty state.
-func (t *Tree) Reset() {
-	t.head = nil
-	t.currentIndex = 0
-	t.proofIndex = 0
-	t.proofSet = nil
-}
-
-// SetIndex must be called on an empty Tree. Trees can be emptied by calling
-// Reset.
+// SetIndex will tell the Tree to create a storage proof for the leaf at the
+// input index. SetIndex must be called on an empty tree.
 func (t *Tree) SetIndex(i uint64) error {
 	if t.head != nil {
 		return errors.New("cannot call SetIndex on Tree if Tree has not been reset")

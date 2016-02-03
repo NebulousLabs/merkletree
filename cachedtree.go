@@ -1,28 +1,28 @@
 package merkletree
 
 import (
+	"errors"
 	"hash"
 )
 
-// A CachedTree will take the cached nodes of a merkle tree and use them to
-// build roots and create proofs of a larger tree. Because the cached tree is
-// taking nodes instead of leaves, significantly less hashing is required to
-// produce the root and proofs. This is particularly useful if the contents of
-// a cached tree have been altered. The components of the cached tree that
-// changed can be updated and must be hashed in full, but the components of the
-// cached tree that did not change do not need to be updated or hashed. All
-// elements added to the cached tree must be at the same height, meaning that
-// the original Tree must have a number of leaves that is a factor of the
-// number of leaves per cached node.
+// A CachedTree can be used to build Merkle roots and proofs from the cached
+// Merkle roots of smaller blocks of data. Each CachedTree has a height,
+// meaning every element added to the CachedTree is the root of a full Merkle
+// tree containing 2^height leaves.
 type CachedTree struct {
+	cachedNodeHeight uint64
+
+	trueProofIndex uint64
+
 	Tree
 }
 
 // NewCachedTree initializes a CachedTree with a hash object, which will be
-// used when hashing the input. The hash must match the hash that was used in
-// the original tree.
-func NewCachedTree(h hash.Hash) *CachedTree {
+// used when hashing the input.
+func NewCachedTree(h hash.Hash, cachedNodeHeight uint64) *CachedTree {
 	return &CachedTree{
+		cachedNodeHeight: cachedNodeHeight,
+
 		Tree: Tree{
 			hash: h,
 
@@ -31,16 +31,15 @@ func NewCachedTree(h hash.Hash) *CachedTree {
 	}
 }
 
-// Prove will create a proof that a data element of a cached tree is a part of
-// the merkle root of the cached tree. Because the tree is cached, additional
-// infomration is needed to create the proof. A proof that the element is in
-// the corresponding subtree is needed, the index of the elmeent within the
-// subtree is needed, and the height of the cached node is needed.
-func (ct *CachedTree) Prove(cachedProofSet [][]byte, cachedProofIndex, cachedNodeHeight uint64) (merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) {
+// Prove will create a proof that the leaf at the indicated index is a part of
+// the data represented by the Merkle root of the Cached Tree. The CachedTree
+// needs the proof set proving that the index is an element of the cached
+// element in order to create a correct proof. After proof is called, the
+// CachedTree is unchanged, and can receive more elements.
+func (ct *CachedTree) Prove(cachedProofSet [][]byte) (merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) {
 	// Determine the proof index within the full tree, and the number of leaves
 	// within the full tree.
-	leavesPerCachedNode := uint64(1) << cachedNodeHeight
-	proofIndex = cachedProofIndex + (ct.proofIndex * leavesPerCachedNode)
+	leavesPerCachedNode := uint64(1) << ct.cachedNodeHeight
 	numLeaves = leavesPerCachedNode * ct.currentIndex
 
 	// Get the proof set tail, which is generated based entirely on cached
@@ -49,7 +48,7 @@ func (ct *CachedTree) Prove(cachedProofSet [][]byte, cachedProofIndex, cachedNod
 	if len(proofSetTail) < 1 {
 		// The proof was invalid, return 'nil' for the proof set but accurate
 		// values for everything else.
-		return merkleRoot, nil, proofIndex, numLeaves
+		return merkleRoot, nil, ct.trueProofIndex, numLeaves
 	}
 
 	// The full proof set is going to be the input cachedProofSet combined with
@@ -58,5 +57,17 @@ func (ct *CachedTree) Prove(cachedProofSet [][]byte, cachedProofIndex, cachedNod
 	// this data exists and therefore it needs to be ommitted from the proof
 	// set.
 	proofSet = append(cachedProofSet, proofSetTail[1:]...)
-	return merkleRoot, proofSet, proofIndex, numLeaves
+	return merkleRoot, proofSet, ct.trueProofIndex, numLeaves
+}
+
+// SetIndex will informed the CachedTree of the index of the leaf for which a
+// storage proof is being created. The index should be the index of the actual
+// leaf, and not the index of the cached element containing the leaf. SetIndex
+// must be called on empty CachedTree.
+func (ct *CachedTree) SetIndex(i uint64) error {
+	if ct.head != nil {
+		return errors.New("cannot call SetIndex on Tree if Tree has not been reset")
+	}
+	ct.trueProofIndex = i
+	return ct.Tree.SetIndex(i / (1 << ct.cachedNodeHeight))
 }

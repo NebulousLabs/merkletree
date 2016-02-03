@@ -235,7 +235,7 @@ func TestBuildRoot(t *testing.T) {
 	tree := New(sha256.New())
 	for i, root := range mt.roots {
 		// Fill out the tree.
-		tree.Reset()
+		tree = New(sha256.New())
 		for j := 0; j < i; j++ {
 			tree.Push(mt.data[j])
 		}
@@ -262,7 +262,7 @@ func TestBuildAndVerifyProof(t *testing.T) {
 	for i, manualProveSets := range mt.proofSets {
 		for j, expectedProveSet := range manualProveSets {
 			// Build out the tree.
-			tree.Reset()
+			tree = New(sha256.New())
 			err := tree.SetIndex(uint64(j))
 			if err != nil {
 				t.Fatal(err)
@@ -401,7 +401,7 @@ func TestCompatibility(t *testing.T) {
 		// Try with proof at every possible index.
 		for j := uint64(0); j < i; j++ {
 			// Push unique data into the tree.
-			tree.Reset()
+			tree = New(sha256.New())
 			err := tree.SetIndex(j)
 			if err != nil {
 				t.Fatal(err)
@@ -444,7 +444,7 @@ func TestCompatibility(t *testing.T) {
 		proofIndex := uint64(proofIndexI.Int64())
 
 		// Prepare the tree.
-		tree.Reset()
+		tree = New(sha256.New())
 		err = tree.SetIndex(proofIndex)
 		if err != nil {
 			t.Fatal(err)
