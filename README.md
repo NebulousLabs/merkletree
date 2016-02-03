@@ -56,7 +56,7 @@ func main() {
 
 	// Example 4: Creating a cached set of Merkle roots and then using them in
 	// a cached tree. The cached tree is height 1, meaning that all elements of
-	// the cached tree will have be merkle roots of data with 2 leaves.
+	// the cached tree will be Merkle roots of data with 2 leaves.
 	cachedTree := merkletree.NewCachedTree(sha256.New(), 1)
 	subtree1 := merkletree.New(sha256.New())
 	subtree1.Push([]byte("first leaf, first subtree"))
@@ -70,13 +70,15 @@ func main() {
 	collectiveRoot := cachedTree.Root()
 
 	// Example 5: Modify the data pushed into subtree 2 and create the Merkle
-	root, without needing to rehash the data in any other subtree.
+	// root, without needing to rehash the data in any other subtree.
 	revisedSubtree2 := merkletree.New(sha256.New())
 	revisedSubtree2.Push([]byte("first leaf, second subtree"))
 	revisedSubtree2.Push([]byte("second leaf, second subtree, revised"))
 	// Using the cached tree, build the merkle root of the 4 leaves - without
 	// needing to rehash any of the data in subtree1.
 	cachedTree = merkletree.NewCachedTree(sha256.New(), 1)
+	cachedTree.Push(subtree1.Root())
+	cachedTree.Push(revisedSubtree2.Root())
 	revisedRoot := cachedTree.Root()
 
 	// Exapmle 6: Create a proof that leaf 3 (index 2) of the revised root,

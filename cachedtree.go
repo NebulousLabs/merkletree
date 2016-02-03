@@ -11,9 +11,7 @@ import (
 // tree containing 2^height leaves.
 type CachedTree struct {
 	cachedNodeHeight uint64
-
-	trueProofIndex uint64
-
+	trueProofIndex   uint64
 	Tree
 }
 

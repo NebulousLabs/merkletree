@@ -10,13 +10,12 @@
 // roots of each sector. Using a cached tree, the Merkle root of the whole file
 // can be computed by passing the cached tree each of the roots of the 4MB
 // sector. Building proofs using these cached roots is also supported. A proof
-// must be build within the target sector using a normal Tree, requiring the
+// must be built within the target sector using a normal Tree, requiring the
 // whole sector to be hashed. The results of that proof can then be passed into
 // the Prove() function of a cached tree, which will create the full proof
-// without needing to hash the entire file.
-//
-// Cacheing also makes it inexpensive to update the Merkle root of the file
-// after changing or deleting segments of the larger file.
+// without needing to hash the entire file. Caching also makes it inexpensive
+// to update the Merkle root of the file after changing or deleting segments of
+// the larger file.
 //
 // Examples can be found in the README for the package.
 package merkletree

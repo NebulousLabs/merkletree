@@ -52,7 +52,10 @@ func BuildReaderProof(r io.Reader, h hash.Hash, segmentSize int, index uint64) (
 	tree := New(h)
 	err = tree.SetIndex(index)
 	if err != nil {
-		return
+		// This code should be unreachable - SetIndex will only return an error
+		// if the tree is not empty, and yet the tree should be empty at this
+		// point.
+		panic(err)
 	}
 	err = tree.ReadAll(r, segmentSize)
 	if err != nil {

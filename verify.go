@@ -14,10 +14,10 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 	// cover tool will reveal if a case is not covered by the test suite. This
 	// would not be possible using a single if statement due to the limitations
 	// of the cover tool.
-	switch {
-	case merkleRoot == nil:
+	if merkleRoot == nil {
 		return false
-	case proofIndex >= numLeaves:
+	}
+	if proofIndex >= numLeaves {
 		return false
 	}
 
