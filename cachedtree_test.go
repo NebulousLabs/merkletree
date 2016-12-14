@@ -214,7 +214,6 @@ func TestCachedTreeConstruction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	subTree2 = New(sha256.New())
 	cachedTree = NewCachedTree(sha256.New(), 0)
 	err = cachedTree.SetIndex(2)
 	if err != nil {

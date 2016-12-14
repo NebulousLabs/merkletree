@@ -232,7 +232,7 @@ func TestBuildRoot(t *testing.T) {
 
 	// Compare the results of calling Root against all of the manually
 	// constructed Merkle trees.
-	tree := New(sha256.New())
+	var tree *Tree
 	for i, root := range mt.roots {
 		// Fill out the tree.
 		tree = New(sha256.New())
