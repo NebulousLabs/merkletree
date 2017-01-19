@@ -56,7 +56,7 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	}
 
 	// Manually build out expected Merkle root values.
-	mt.roots[0] = sum(sha256.New(), nil)
+	mt.roots[0] = nil
 	mt.roots[1] = mt.leaves[0]
 	mt.roots[2] = mt.join(mt.leaves[0], mt.leaves[1])
 	mt.roots[3] = mt.join(
@@ -333,12 +333,6 @@ func TestBuildAndVerifyProof(t *testing.T) {
 // TestBadInputs provides malicious inputs to the functions of the package,
 // trying to trigger panics or unexpected behavior.
 func TestBadInputs(t *testing.T) {
-	// Put nil into sum.
-	a := sum(sha256.New(), nil)
-	if a != nil {
-		t.Error("sum of nil should return nil")
-	}
-
 	// Get the root and proof of an empty tree.
 	tree := New(sha256.New())
 	root := tree.Root()

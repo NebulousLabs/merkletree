@@ -46,34 +46,27 @@ type subTree struct {
 }
 
 // sum returns the hash of the input data using the specified algorithm.
-func sum(h hash.Hash, data []byte) []byte {
-	if data == nil {
-		return nil
-	}
-
-	_, err := h.Write(data)
-	if err != nil {
-		// Result will not be correct if the hash is throwing an error when
-		// it's supposed to be checksumming data.
-		panic(err)
-	}
-	result := h.Sum(nil)
+func sum(h hash.Hash, data ...[]byte) []byte {
 	h.Reset()
-	return result
+	for _, d := range data {
+		// the Hash interface specifies that Write never returns an error
+		_, _ = h.Write(d)
+	}
+	return h.Sum(nil)
 }
 
 // leafSum returns the hash created from data inserted to form a leaf. Leaf
 // sums are calculated using:
-//		Hash( 0x00 || data)
+//		Hash(0x00 || data)
 func leafSum(h hash.Hash, data []byte) []byte {
-	return sum(h, append([]byte{0}, data...))
+	return sum(h, []byte{0}, data)
 }
 
 // nodeSum returns the hash created from two sibling nodes being combined into
 // a parent node. Node sums are calculated using:
-//		Hash( 0x01 || left sibling sum || right sibling sum)
+//		Hash(0x01 || left sibling sum || right sibling sum)
 func nodeSum(h hash.Hash, a, b []byte) []byte {
-	return sum(h, append(append([]byte{1}, a...), b...))
+	return sum(h, []byte{1}, a, b)
 }
 
 // joinSubTrees combines two equal sized subTrees into a larger subTree.
@@ -247,9 +240,9 @@ func (t *Tree) Push(data []byte) {
 
 // Root returns the Merkle root of the data that has been pushed.
 func (t *Tree) Root() []byte {
-	// If the Tree is empty, return the hash of the empty string.
+	// If the Tree is empty, return nil.
 	if t.head == nil {
-		return sum(t.hash, nil)
+		return nil
 	}
 
 	// The root is formed by hashing together subTrees in order from least in
