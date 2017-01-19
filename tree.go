@@ -51,12 +51,7 @@ func sum(h hash.Hash, data []byte) []byte {
 		return nil
 	}
 
-	_, err := h.Write(data)
-	if err != nil {
-		// Result will not be correct if the hash is throwing an error when
-		// it's supposed to be checksumming data.
-		panic(err)
-	}
+	h.Write(data) // the Hash interface specifies that Write never returns an error
 	result := h.Sum(nil)
 	h.Reset()
 	return result
