@@ -50,25 +50,30 @@ func sum(h hash.Hash, data []byte) []byte {
 	if data == nil {
 		return nil
 	}
-
-	h.Write(data) // the Hash interface specifies that Write never returns an error
-	result := h.Sum(nil)
 	h.Reset()
-	return result
+	h.Write(data) // the Hash interface specifies that Write never returns an error
+	return h.Sum(nil)
 }
 
 // leafSum returns the hash created from data inserted to form a leaf. Leaf
 // sums are calculated using:
-//		Hash( 0x00 || data)
+//		Hash(0x00 || data)
 func leafSum(h hash.Hash, data []byte) []byte {
-	return sum(h, append([]byte{0}, data...))
+	h.Reset()
+	h.Write([]byte{0})
+	h.Write(data)
+	return h.Sum(nil)
 }
 
 // nodeSum returns the hash created from two sibling nodes being combined into
 // a parent node. Node sums are calculated using:
-//		Hash( 0x01 || left sibling sum || right sibling sum)
+//		Hash(0x01 || left sibling sum || right sibling sum)
 func nodeSum(h hash.Hash, a, b []byte) []byte {
-	return sum(h, append(append([]byte{1}, a...), b...))
+	h.Reset()
+	h.Write([]byte{1})
+	h.Write(a)
+	h.Write(b)
+	return h.Sum(nil)
 }
 
 // joinSubTrees combines two equal sized subTrees into a larger subTree.
