@@ -46,12 +46,15 @@ type subTree struct {
 }
 
 // sum returns the hash of the input data using the specified algorithm.
-func sum(h hash.Hash, data []byte) []byte {
+func sum(h hash.Hash, data ...[]byte) []byte {
 	if data == nil {
 		return nil
 	}
 	h.Reset()
-	h.Write(data) // the Hash interface specifies that Write never returns an error
+	for _, d := range data {
+		// the Hash interface specifies that Write never returns an error
+		_, _ = h.Write(d)
+	}
 	return h.Sum(nil)
 }
 
@@ -59,21 +62,14 @@ func sum(h hash.Hash, data []byte) []byte {
 // sums are calculated using:
 //		Hash(0x00 || data)
 func leafSum(h hash.Hash, data []byte) []byte {
-	h.Reset()
-	h.Write([]byte{0})
-	h.Write(data)
-	return h.Sum(nil)
+	return sum(h, []byte{0}, data)
 }
 
 // nodeSum returns the hash created from two sibling nodes being combined into
 // a parent node. Node sums are calculated using:
 //		Hash(0x01 || left sibling sum || right sibling sum)
 func nodeSum(h hash.Hash, a, b []byte) []byte {
-	h.Reset()
-	h.Write([]byte{1})
-	h.Write(a)
-	h.Write(b)
-	return h.Sum(nil)
+	return sum(h, []byte{1}, a, b)
 }
 
 // joinSubTrees combines two equal sized subTrees into a larger subTree.
