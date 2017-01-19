@@ -47,9 +47,6 @@ type subTree struct {
 
 // sum returns the hash of the input data using the specified algorithm.
 func sum(h hash.Hash, data ...[]byte) []byte {
-	if data == nil {
-		return nil
-	}
 	h.Reset()
 	for _, d := range data {
 		// the Hash interface specifies that Write never returns an error
@@ -243,9 +240,9 @@ func (t *Tree) Push(data []byte) {
 
 // Root returns the Merkle root of the data that has been pushed.
 func (t *Tree) Root() []byte {
-	// If the Tree is empty, return the hash of the empty string.
+	// If the Tree is empty, return nil.
 	if t.head == nil {
-		return sum(t.hash, nil)
+		return nil
 	}
 
 	// The root is formed by hashing together subTrees in order from least in
