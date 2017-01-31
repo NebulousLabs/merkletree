@@ -39,7 +39,7 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
 	for {
 		// hash next segment
 		h.Reset()
-		h.Write(leafHashPrefix)
+		_, _ = h.Write(leafHashPrefix)
 		n, err := io.ReadFull(r, buf)
 		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
 			// ignore EOF errors because a partially-full segment is okay
@@ -47,7 +47,7 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
 		} else if n == 0 {
 			break
 		}
-		h.Write(buf[:n])
+		_, _ = h.Write(buf[:n])
 		sum := h.Sum(buf[:0])
 
 		// merge nodes of adjacent height until we reach a gap, and insert
@@ -65,9 +65,9 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
 
 			// join hashes
 			h.Reset()
-			h.Write(nodeHashPrefix)
-			h.Write(nodes[i])
-			h.Write(sum)
+			_, _ = h.Write(nodeHashPrefix)
+			_, _ = h.Write(nodes[i])
+			_, _ = h.Write(sum)
 			sum = h.Sum(buf[:0])
 			// clear the old hash
 			nodes[i] = nodes[i][:0]
@@ -85,9 +85,9 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
 	root := nonEmpty[0]
 	for _, node := range nonEmpty[1:] {
 		h.Reset()
-		h.Write(nodeHashPrefix)
-		h.Write(node)
-		h.Write(root)
+		_, _ = h.Write(nodeHashPrefix)
+		_, _ = h.Write(node)
+		_, _ = h.Write(root)
 		root = h.Sum(buf[:0])
 	}
 	return root, nil

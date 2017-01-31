@@ -127,7 +127,7 @@ func BenchmarkReader64_1k(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ReaderRoot(bytes.NewReader(data), h, segmentSize)
+		_, _ = ReaderRoot(bytes.NewReader(data), h, segmentSize)
 	}
 }
 
@@ -145,7 +145,7 @@ func BenchmarkReader64_4MB(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ReaderRoot(bytes.NewReader(data), h, segmentSize)
+		_, _ = ReaderRoot(bytes.NewReader(data), h, segmentSize)
 	}
 }
 
@@ -163,7 +163,7 @@ func BenchmarkReader4k_4MB(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ReaderRoot(bytes.NewReader(data), h, segmentSize)
+		_, _ = ReaderRoot(bytes.NewReader(data), h, segmentSize)
 	}
 }
 
@@ -193,7 +193,7 @@ func BenchmarkReaderTree64_1k(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		treeReaderRoot(bytes.NewReader(data), h, segmentSize)
+		_, _ = treeReaderRoot(bytes.NewReader(data), h, segmentSize)
 	}
 }
 
@@ -211,7 +211,7 @@ func BenchmarkReaderTree64_4MB(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		treeReaderRoot(bytes.NewReader(data), h, segmentSize)
+		_, _ = treeReaderRoot(bytes.NewReader(data), h, segmentSize)
 	}
 }
 
@@ -229,7 +229,7 @@ func BenchmarkReaderTree4k_4MB(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		treeReaderRoot(bytes.NewReader(data), h, segmentSize)
+		_, _ = treeReaderRoot(bytes.NewReader(data), h, segmentSize)
 	}
 }
 
