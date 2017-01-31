@@ -33,14 +33,64 @@ func (t *Tree) ReadAll(r io.Reader, segmentSize int) error {
 // each leaf is 'segmentSize' long and 'h' is used as the hashing function. All
 // leaves will be 'segmentSize' bytes except the last leaf, which will not be
 // padded out if there are not enough bytes remaining in the reader.
-func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err error) {
-	tree := New(h)
-	err = tree.ReadAll(r, segmentSize)
-	if err != nil {
-		return
+func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
+	nodes := make([][]byte, 64)      // very unlikely to need more than 64 nodes
+	buf := make([]byte, segmentSize) // scratch space for reading and hashing
+	for {
+		// hash next segment
+		h.Reset()
+		h.Write(leafHashPrefix)
+		n, err := io.ReadFull(r, buf)
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			// ignore EOF errors because a partially-full segment is okay
+			return nil, err
+		} else if n == 0 {
+			break
+		}
+		h.Write(buf[:n])
+		sum := h.Sum(buf[:0])
+
+		// merge nodes of adjacent height until we reach a gap, and insert
+		// the new hash into the gap
+		for i := 0; ; i++ {
+			if i == len(nodes) {
+				// we ran out of nodes; append a new one
+				nodes = append(nodes, nil)
+			}
+			if len(nodes[i]) == 0 {
+				// found a gap; insert hash and proceed to next segment
+				nodes[i] = append(nodes[i], sum...)
+				break
+			}
+
+			// join hashes
+			h.Reset()
+			h.Write(nodeHashPrefix)
+			h.Write(nodes[i])
+			h.Write(sum)
+			sum = h.Sum(buf[:0])
+			// clear the old hash
+			nodes[i] = nodes[i][:0]
+		}
 	}
-	root = tree.Root()
-	return
+
+	// filter out empty nodes
+	nonEmpty := nodes[:0]
+	for _, node := range nodes {
+		if len(node) != 0 {
+			nonEmpty = append(nonEmpty, node)
+		}
+	}
+	// combine remaining nodes
+	root := nonEmpty[0]
+	for _, node := range nonEmpty[1:] {
+		h.Reset()
+		h.Write(nodeHashPrefix)
+		h.Write(node)
+		h.Write(root)
+		root = h.Sum(buf[:0])
+	}
+	return root, nil
 }
 
 // BuildReaderProof returns a proof that certain data is in the merkle tree
