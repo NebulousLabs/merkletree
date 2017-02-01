@@ -37,8 +37,15 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
 	if segmentSize == 0 {
 		return nil, errors.New("segment size must be nonzero")
 	}
-	nodes := make([][]byte, 64)      // very unlikely to need more than 64 nodes
-	buf := make([]byte, segmentSize) // scratch space for reading and hashing
+	// The total number of nodes required is log2(n/segmentSize), where n is
+	// the number of bytes read from r. It is highly unlikely that we will
+	// need more than 64 nodes, but if we do, more are appended as needed.
+	nodes := make([][]byte, 64)
+	// Preallocate scratch space for reading and hashing. Unfortunately, the
+	// hash.Hash interface does not expose the length of its checksums, so we
+	// preallocate by hashing the empty string.
+	buf := make([]byte, segmentSize)
+	sum := h.Sum(nil)
 	for {
 		// hash next segment
 		h.Reset()
@@ -51,7 +58,7 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
 			break
 		}
 		_, _ = h.Write(buf[:n])
-		sum := h.Sum(buf[:0])
+		sum = h.Sum(sum[:0])
 
 		// merge nodes of adjacent height until we reach a gap, and insert
 		// the new hash into the gap
@@ -71,7 +78,7 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
 			_, _ = h.Write(nodeHashPrefix)
 			_, _ = h.Write(nodes[i])
 			_, _ = h.Write(sum)
-			sum = h.Sum(buf[:0])
+			sum = h.Sum(sum[:0])
 			// clear the old hash
 			nodes[i] = nodes[i][:0]
 		}
@@ -94,7 +101,7 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
 		_, _ = h.Write(nodeHashPrefix)
 		_, _ = h.Write(node)
 		_, _ = h.Write(root)
-		root = h.Sum(buf[:0])
+		root = h.Sum(root[:0])
 	}
 	return root, nil
 }
