@@ -34,6 +34,9 @@ func (t *Tree) ReadAll(r io.Reader, segmentSize int) error {
 // leaves will be 'segmentSize' bytes except the last leaf, which will not be
 // padded out if there are not enough bytes remaining in the reader.
 func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
+	if segmentSize == 0 {
+		return nil, errors.New("segment size must be nonzero")
+	}
 	nodes := make([][]byte, 64)      // very unlikely to need more than 64 nodes
 	buf := make([]byte, segmentSize) // scratch space for reading and hashing
 	for {
@@ -82,6 +85,9 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
 		}
 	}
 	// combine remaining nodes
+	if len(nonEmpty) == 0 {
+		return nil, nil
+	}
 	root := nonEmpty[0]
 	for _, node := range nonEmpty[1:] {
 		h.Reset()

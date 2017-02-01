@@ -265,3 +265,22 @@ func TestReaderMatch(t *testing.T) {
 		}
 	}
 }
+
+// TestReaderBadInputs tests that ReaderRoot properly handles edge-case
+// inputs, such as a segment size of zero or a reader containing no data.
+func TestReaderBadInputs(t *testing.T) {
+	// A reader containing no data should result in a nil root, without an
+	// error.
+	root, err := ReaderRoot(&bytes.Reader{}, sha256.New(), 64)
+	if err != nil {
+		t.Error(err)
+	} else if root != nil {
+		t.Error("root of empty reader should be nil; got", root)
+	}
+
+	// A segment size of 0 should return an error.
+	_, err = ReaderRoot(bytes.NewReader([]byte("data")), sha256.New(), 0)
+	if err == nil {
+		t.Error("ReaderRoot should return an error if segment size is zero")
+	}
+}
