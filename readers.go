@@ -34,6 +34,29 @@ func (t *Tree) ReadAll(r io.Reader, segmentSize int) error {
 // leaves will be 'segmentSize' bytes except the last leaf, which will not be
 // padded out if there are not enough bytes remaining in the reader.
 func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) ([]byte, error) {
+	// Implementation:
+	//
+	// Calculating a Merkle root is analogous to binary addition. In binary,
+	// adding two bits at position n produces one bit at position n+1.
+	// Likewise, we can "add" two hashes at height n in a Merkle tree to
+	// produce a hash at height n+1.
+	//
+	// By exploiting this isomorphism, we can calculate the root of a Merkle
+	// tree in log(n) space. We represent the tree as a slice of hashes, with
+	// each index corresponding to a height in the tree. Each time we hash a
+	// segment, we "add" it to the 0-index of our slice of hashes. If there is
+	// already a hash at index 0, we combine the hashes and carry this "sum"
+	// into the next index, clearing index 0. If that index is occupied, we
+	// continue summing and carrying until a gap is reached. Thus, after we
+	// have processed 8 segments, the first 3 indices will be empty, and the
+	// fourth will contain the Merkle root of the segments. This is analogous
+	// to the binary string 0001 (little-endian).
+	//
+	// Once we have finished reading and processing segments, the tree may not
+	// be perfectly balanced, i.e. the slice of hashes will have more than one
+	// hash. To calculate the final Merkle root, we simply join each of the
+	// remaining hashes in order until one remains.
+
 	if segmentSize == 0 {
 		return nil, errors.New("segment size must be nonzero")
 	}
