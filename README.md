@@ -20,7 +20,6 @@ package main
 
 import (
     "crypto/sha256"
-    "log"
     "os"
 
     "github.com/NebulousLabs/merkletree"
@@ -38,7 +37,7 @@ func main() {
 	file.Seek(0, 0) // Offset needs to be set back to 0.
 	proofIndex := uint64(7)
 	merkleRoot, proof, numLeaves, _ := merkletree.BuildReaderProof(file, sha256.New(), segmentSize, proofIndex)
-	verified := VerifyProof(sha256.New(), merkleRoot, proof, proofIndex, numLeaves)
+	verified := merkletree.VerifyProof(sha256.New(), merkleRoot, proof, proofIndex, numLeaves)
 
 	// Example 3: Using a Tree to build a merkle tree and get a proof for a
 	// specific index for non-file objects.
@@ -48,7 +47,7 @@ func main() {
 	tree.Push([]byte("another object"))
 	// The merkle root could be obtained by calling tree.Root(), but will also
 	// be provided by tree.Prove()
-	merkleRoot, proof, proofIndex, numLeaves := tree.Prove()
+	merkleRoot, proof, proofIndex, numLeaves = tree.Prove()
 
 	////////////////////////////////////////////////
 	/// Remaining examples deal with cached trees //
@@ -96,6 +95,11 @@ func main() {
 	// Now we can create the full proof for the cached tree, without having to
 	// rehash any of the elements from subtree1.
 	_, fullProof, _, _ := cachedTree.Prove(subtreeProof)
+
+	_ = verified
+	_ = collectiveRoot
+	_ = revisedRoot
+	_ = fullProof
 }
 ```
 
