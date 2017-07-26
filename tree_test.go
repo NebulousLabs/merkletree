@@ -18,7 +18,7 @@ type MerkleTester struct {
 	// leaves is the hashes of the data, and should be the same length.
 	leaves [][]byte
 
-	// roots contains the root hashes of Merkle trees of various heights using
+	// roots contains the root hashes of Merkle trees of various lengths using
 	// the data for input.
 	roots map[int][]byte
 
@@ -424,7 +424,7 @@ func TestCompatibility(t *testing.T) {
 
 	// Check that proofs on larger trees are consistent.
 	for i := 0; i < 25; i++ {
-		// Determine a random size for the tree up to 64M elements.
+		// Determine a random size for the tree up to 256k elements.
 		sizeI, err := rand.Int(rand.Reader, big.NewInt(256e3))
 		if err != nil {
 			t.Fatal(err)
