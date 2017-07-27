@@ -47,7 +47,7 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 	mt.T = t
 
 	// Fill out the data and leaves values.
-	size := 16
+	size := 100
 	for i := 0; i < size; i++ {
 		mt.data = append(mt.data, []byte{byte(i)})
 	}
@@ -106,6 +106,155 @@ func CreateMerkleTester(t *testing.T) (mt *MerkleTester) {
 			mt.join(
 				mt.join(mt.leaves[12], mt.leaves[13]),
 				mt.leaves[14],
+			),
+		),
+	)
+
+	mt.roots[100] = mt.join(
+		mt.join(
+			mt.join(
+				mt.join(
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[0], mt.leaves[1]),
+							mt.join(mt.leaves[2], mt.leaves[3]),
+						),
+						mt.join(
+							mt.join(mt.leaves[4], mt.leaves[5]),
+							mt.join(mt.leaves[6], mt.leaves[7]),
+						),
+					),
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[8], mt.leaves[9]),
+							mt.join(mt.leaves[10], mt.leaves[11]),
+						),
+						mt.join(
+							mt.join(mt.leaves[12], mt.leaves[13]),
+							mt.join(mt.leaves[14], mt.leaves[15]),
+						),
+					),
+				),
+				mt.join(
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[16], mt.leaves[17]),
+							mt.join(mt.leaves[18], mt.leaves[19]),
+						),
+						mt.join(
+							mt.join(mt.leaves[20], mt.leaves[21]),
+							mt.join(mt.leaves[22], mt.leaves[23]),
+						),
+					),
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[24], mt.leaves[25]),
+							mt.join(mt.leaves[26], mt.leaves[27]),
+						),
+						mt.join(
+							mt.join(mt.leaves[28], mt.leaves[29]),
+							mt.join(mt.leaves[30], mt.leaves[31]),
+						),
+					),
+				),
+			),
+			mt.join(
+				mt.join(
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[32], mt.leaves[33]),
+							mt.join(mt.leaves[34], mt.leaves[35]),
+						),
+						mt.join(
+							mt.join(mt.leaves[36], mt.leaves[37]),
+							mt.join(mt.leaves[38], mt.leaves[39]),
+						),
+					),
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[40], mt.leaves[41]),
+							mt.join(mt.leaves[42], mt.leaves[43]),
+						),
+						mt.join(
+							mt.join(mt.leaves[44], mt.leaves[45]),
+							mt.join(mt.leaves[46], mt.leaves[47]),
+						),
+					),
+				),
+				mt.join(
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[48], mt.leaves[49]),
+							mt.join(mt.leaves[50], mt.leaves[51]),
+						),
+						mt.join(
+							mt.join(mt.leaves[52], mt.leaves[53]),
+							mt.join(mt.leaves[54], mt.leaves[55]),
+						),
+					),
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[56], mt.leaves[57]),
+							mt.join(mt.leaves[58], mt.leaves[59]),
+						),
+						mt.join(
+							mt.join(mt.leaves[60], mt.leaves[61]),
+							mt.join(mt.leaves[62], mt.leaves[63]),
+						),
+					),
+				),
+			),
+		),
+		mt.join(
+			mt.join(
+				mt.join(
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[64], mt.leaves[65]),
+							mt.join(mt.leaves[66], mt.leaves[67]),
+						),
+						mt.join(
+							mt.join(mt.leaves[68], mt.leaves[69]),
+							mt.join(mt.leaves[70], mt.leaves[71]),
+						),
+					),
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[72], mt.leaves[73]),
+							mt.join(mt.leaves[74], mt.leaves[75]),
+						),
+						mt.join(
+							mt.join(mt.leaves[76], mt.leaves[77]),
+							mt.join(mt.leaves[78], mt.leaves[79]),
+						),
+					),
+				),
+				mt.join(
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[80], mt.leaves[81]),
+							mt.join(mt.leaves[82], mt.leaves[83]),
+						),
+						mt.join(
+							mt.join(mt.leaves[84], mt.leaves[85]),
+							mt.join(mt.leaves[86], mt.leaves[87]),
+						),
+					),
+					mt.join(
+						mt.join(
+							mt.join(mt.leaves[88], mt.leaves[89]),
+							mt.join(mt.leaves[90], mt.leaves[91]),
+						),
+						mt.join(
+							mt.join(mt.leaves[92], mt.leaves[93]),
+							mt.join(mt.leaves[94], mt.leaves[95]),
+						),
+					),
+				),
+			),
+			mt.join(
+				mt.join(mt.leaves[96], mt.leaves[97]),
+				mt.join(mt.leaves[98], mt.leaves[99]),
 			),
 		),
 	)
