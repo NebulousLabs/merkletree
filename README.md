@@ -1,5 +1,4 @@
-merkletree
-----------
+# merkletree
 
 merkletree is a Go package for working with [Merkle
 trees](http://en.wikipedia.org/wiki/Merkle_tree). Specifically, this package is
@@ -12,8 +11,7 @@ piece is part of the full file.
 When sha256 is used as the hashing algorithm, the implementation matches the
 merkle tree described in RFC 6962, 'Certificate Transparency'.
 
-Usage
------
+## Usage
 
 ```go
 package main
@@ -106,8 +104,7 @@ func main() {
 For more extensive documentation, refer to the
 [godoc](http://godoc.org/github.com/NebulousLabs/merkletree).
 
-Notes
------
+## Notes
 
 This implementation does not retain the entire Merkle tree in memory. Rather,
 as each new leaf is added to the tree, is it pushed onto a stack as a "subtree
