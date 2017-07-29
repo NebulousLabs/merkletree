@@ -128,3 +128,87 @@ hashed multiple times.
 
 When using the Reader functions (ReaderRoot and BuildReaderProof), the last
 segment will not be padded if there are not 'segmentSize' bytes remaining.
+
+## Format of proof
+
+Note: the description below mentiones proofs of slices of leaves.
+Currently only slices of one leave are supportes.
+
+### What is included to the proof
+
+A proof is a slice of slices of bytes. It begins with the leave data,
+then hashes of subtrees follow. Combining all leaves which are covered in
+these two groups (as leaves from the beginning of the proof or as leaves
+from the subtrees whose hashes constitute the second part of the proof)
+we get all leaves of the tree and each leave presents once.
+
+Example. Proof built in a tree of 5 leaves for element at index 2:
+
+```
+     ┌───┴──*
+  *──┴──┐   │
+┌─┴─┐ ┌─┴─* │
+0   1 2   3 4
+      *
+```
+
+Parts of the proof are marked with asterisks (*).
+
+If we build a proof for a slice, the rule is the same: first include all
+leaves from the target slice, then add hashes of all subtrees so that
+together with the target slice they cover all leaves, once.
+
+Example. Proof built in a tree of 7 leaves for the slice [2, 5).
+
+```
+     ┌─────┴─────┐
+  *──┴──┐     ┌──┴──*
+┌─┴─┐ ┌─┴─┐ ┌─┴─*   │
+0   1 2   3 4   5   6
+      *   * *
+```
+
+Example. Proof built in a tree of 7 leaves for the slice [3, 5).
+
+```
+     ┌─────┴─────┐
+  *──┴──┐     ┌──┴──*
+┌─┴─┐ *─┴─┐ ┌─┴─*   │
+0   1 2   3 4   5   6
+          * *
+```
+
+### The order of stuff in the proof
+
+The proof starts with the data items. For a proof of one element
+it is the element itself (one item in the main proof slice).
+In case of slice the data is represented as multiple items in the main
+proof slice, in the order of occurrence in the source data.
+
+Hashes of subtrees (constituting the second half of a proof) are sorted
+by height (ascending), then by occurrence in the source data. The height
+of an orphan subtree is equal to the height of its parent minus one.
+
+Some examples of how parts of proofs are ordered. A number corresponds
+to the place of this leave or subtree hash in the proof.
+
+```
+     ┌────┴───┐
+  5──┴──┐     │
+┌─┴─┐ 3─┴─┐ ┌─┴─4
+          1 2
+```
+
+```
+     ┌────┴───4
+  ┌──┴──┐     │
+3─┴─┐ ┌─┴─┐ ┌─┴─┐
+    1 2   3
+```
+
+```
+     ┌────┴───┐
+  5──┴──┐     │
+┌─┴─┐ ┌─┴─┐ ┌─┴─┐
+      1   2 3   4
+```
