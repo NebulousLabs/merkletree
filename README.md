@@ -47,9 +47,9 @@ func main() {
 	// be provided by tree.Prove()
 	merkleRoot, proof, proofIndex, numLeaves = tree.Prove()
 
-	////////////////////////////////////////////////
-	/// Remaining examples deal with cached trees //
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////
+	/// Next group of examples deal with cached trees //
+	////////////////////////////////////////////////////
 
 	// Example 4: Creating a cached set of Merkle roots and then using them in
 	// a cached tree. The cached tree is height 1, meaning that all elements of
@@ -94,6 +94,21 @@ func main() {
 	// rehash any of the elements from subtree1.
 	_, fullProof, _, _ := cachedTree.Prove(subtreeProof)
 
+	////////////////////////////////////////////////////////
+	/// Next group of examples deal with proofs of slices //
+	////////////////////////////////////////////////////////
+
+	// Example 7: Using a Tree to build a merkle tree and get a proof for a
+	// specific slice for non-file objects.
+	tree = merkletree.New(sha256.New())
+	tree.SetSlice(1, 3) // Objects 1 and 2.
+	tree.Push([]byte("an object - the tree will hash the data after it is pushed"))
+	tree.Push([]byte("the first part of the slice"))
+	tree.Push([]byte("the second part of the slice"))
+	tree.Push([]byte("another object"))
+	merkleRoot, proof, _, numLeaves = tree.Prove()
+	verified = merkletree.VerifyProofOfSlice(sha256.New(), merkleRoot, proof, 1, 3, numLeaves)
+
 	_ = verified
 	_ = collectiveRoot
 	_ = revisedRoot
@@ -130,9 +145,6 @@ When using the Reader functions (ReaderRoot and BuildReaderProof), the last
 segment will not be padded if there are not 'segmentSize' bytes remaining.
 
 ## Format of proof
-
-Note: the description below mentiones proofs of slices of leaves.
-Currently only slices of one leave are supportes.
 
 ### What is included to the proof
 
