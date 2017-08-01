@@ -507,6 +507,30 @@ func TestBadInputs(t *testing.T) {
 	if err == nil {
 		t.Error("expecting error, shouldn't be able to reset a tree after pushing")
 	}
+	err = tree.SetSlice(1, 3)
+	if err == nil {
+		t.Error("expecting error, shouldn't be able to reset a tree after pushing")
+	}
+
+	// Get the proof of a tree that hasn't reached it's index (slice version).
+	tree2 := New(sha256.New())
+	err = tree2.SetSlice(1, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree2.Push([]byte{1})
+	_, proof, _, _ = tree2.Prove()
+	if proof != nil {
+		t.Fatal(err)
+	}
+	err = tree2.SetIndex(2)
+	if err == nil {
+		t.Error("expecting error, shouldn't be able to reset a tree after pushing")
+	}
+	err = tree2.SetSlice(1, 3)
+	if err == nil {
+		t.Error("expecting error, shouldn't be able to reset a tree after pushing")
+	}
 
 	// Try nil values in VerifyProof.
 	mt := CreateMerkleTester(t)
@@ -524,6 +548,23 @@ func TestBadInputs(t *testing.T) {
 	}
 	if VerifyProof(sha256.New(), mt.roots[15], mt.proofSets[15][10], 15, 0) {
 		t.Error("VerifyProof should return false when numLeaves is 0")
+	}
+
+	// Try nil values in VerifyProofOfSlice.
+	if VerifyProofOfSlice(sha256.New(), nil, mt.proofSets[1][0], 0, 1, 1) {
+		t.Error("VerifyProofOfSlice should return false for nil merkle root")
+	}
+	if VerifyProofOfSlice(sha256.New(), []byte{1}, nil, 0, 1, 1) {
+		t.Error("VerifyProofOfSlice should return false for nil proof set")
+	}
+	if VerifyProofOfSlice(sha256.New(), mt.roots[15], mt.proofSets[15][3][1:], 3, 4, 15) {
+		t.Error("VerifyProofOfSlice should return false for too-short proof set")
+	}
+	if VerifyProofOfSlice(sha256.New(), mt.roots[15], mt.proofSets[15][10][1:], 10, 11, 15) {
+		t.Error("VerifyProofOfSlice should return false for too-short proof set")
+	}
+	if VerifyProofOfSlice(sha256.New(), mt.roots[15], mt.proofSets[15][10], 15, 30, 0) {
+		t.Error("VerifyProofOfSlice should return false when numLeaves is 0")
 	}
 }
 
