@@ -648,6 +648,114 @@ func TestCompatibility(t *testing.T) {
 	}
 }
 
+func TestCompatibilitySlice(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+
+	// Brute force all trees up to size 'max'. Running time for this test is max^5.
+	max := uint64(15)
+	tree := New(sha256.New())
+	for numLeaves := uint64(1); numLeaves < max; numLeaves++ {
+		// Make merkleRoot using regular Prove.
+		tree = New(sha256.New())
+		err := tree.SetIndex(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for k := uint64(0); k < numLeaves; k++ {
+			tree.Push([]byte{byte(k)})
+		}
+		merkleRoot, _, _, _ := tree.Prove()
+
+		// Try with proof at every possible slice.
+		for a := uint64(0); a < numLeaves; a++ {
+			for b := a + 1; b <= numLeaves; b++ {
+				tree = New(sha256.New())
+				err := tree.SetSlice(a, b)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for k := uint64(0); k < numLeaves; k++ {
+					tree.Push([]byte{byte(k)})
+				}
+
+				// Build the proof for the tree and run it through verify.
+				_, proofSet, proofBegin, _ := tree.Prove()
+				if proofBegin != a {
+					t.Error("proofBegin=%d, want %d", proofBegin, a)
+				}
+				if !VerifyProofOfSlice(sha256.New(), merkleRoot, proofSet, a, b, numLeaves) {
+					t.Error("proof didn't verify for indices", a, b)
+				}
+
+				// Check that verification fails for all other indices.
+				for a1 := uint64(0); a1 < numLeaves; a1++ {
+					for b1 := a1 + 1; b1 <= numLeaves; b1++ {
+						if a == a1 && b == b1 {
+							continue
+						}
+						if VerifyProofOfSlice(sha256.New(), merkleRoot, proofSet, a1, b1, numLeaves) {
+							t.Error("proof verify for indices", a1, b1)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestCompatibilitySliceLarge(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+
+	// Check that proofs on larger trees are consistent.
+	for i := 0; i < 25; i++ {
+		// Determine a random size for the tree up to 256k elements.
+		sizeI, err := rand.Int(rand.Reader, big.NewInt(256e3))
+		if err != nil {
+			t.Fatal(err)
+		}
+		size := uint64(sizeI.Int64())
+
+		proofBeginI, err := rand.Int(rand.Reader, sizeI)
+		if err != nil {
+			t.Fatal(err)
+		}
+		proofBegin := uint64(proofBeginI.Int64())
+
+		var remainingI big.Int
+		remainingI.Sub(sizeI, proofBeginI)
+		sliceI, err := rand.Int(rand.Reader, &remainingI)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var proofEndI big.Int
+		proofEndI.Add(proofBeginI, sliceI)
+		proofEnd := uint64(proofEndI.Int64())
+
+		// Prepare the tree.
+		tree := New(sha256.New())
+		err = tree.SetSlice(proofBegin, proofEnd)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Insert 'size' unique elements.
+		for j := 0; j < int(size); j++ {
+			elem := []byte(strconv.Itoa(j))
+			tree.Push(elem)
+		}
+
+		// Get the proof for the tree and run it through verify.
+		merkleRoot, proofSet, _, numLeaves := tree.Prove()
+		if !VerifyProofOfSlice(sha256.New(), merkleRoot, proofSet, proofBegin, proofEnd, numLeaves) {
+			t.Error("proof didn't verify in long test", size, proofBegin, proofEnd)
+		}
+	}
+}
+
 // TestLeafCounts checks that the number of leaves in the tree are being
 // reported correctly.
 func TestLeafCounts(t *testing.T) {
