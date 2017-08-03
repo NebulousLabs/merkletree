@@ -779,6 +779,18 @@ func TestLeafCounts(t *testing.T) {
 	if leaves != 1 {
 		t.Error("bad reporting on leaf count")
 	}
+
+	tree = New(sha256.New())
+	err = tree.SetSlice(1, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree.Push([]byte{})
+	tree.Push([]byte{})
+	_, _, _, leaves = tree.Prove()
+	if leaves != 2 {
+		t.Error("bad reporting on leaf count")
+	}
 }
 
 // BenchmarkSha256_4MB uses sha256 to hash 4mb of data.
