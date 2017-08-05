@@ -301,7 +301,7 @@ func TestCachedTreeConstructionAuto(t *testing.T) {
 		t.SkipNow()
 	}
 
-	// Build out cached trees with up to 33 cached elements, each height 'h'.
+	// Build out cached trees with up to 35 cached elements, each height 'h'.
 	for h := uint64(0); h < 5; h++ {
 		n := uint64(1) << h
 		for i := uint64(0); i < 35; i++ {
