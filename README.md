@@ -109,6 +109,14 @@ func main() {
 	merkleRoot, proof, _, numLeaves = tree.Prove()
 	verified = merkletree.VerifyProofOfSlice(sha256.New(), merkleRoot, proof, 1, 3, numLeaves)
 
+	// Example 8: Build and verify a proof that the elements at segments 5-10
+	// are in the merkle root. The proof starts with the elements themselves.
+	file.Seek(0, 0) // Offset needs to be set back to 0.
+	proofBegin := uint64(5)
+	proofEnd := uint64(10) + 1
+	merkleRoot, proof, numLeaves, _ = merkletree.BuildReaderProofSlice(file, sha256.New(), segmentSize, proofBegin, proofEnd)
+	verified = merkletree.VerifyProofOfSlice(sha256.New(), merkleRoot, proof, proofBegin, proofEnd, numLeaves)
+
 	_ = verified
 	_ = collectiveRoot
 	_ = revisedRoot
