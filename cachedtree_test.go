@@ -8,7 +8,7 @@ import (
 
 // addSubTree will create a subtree of the desired height using the dataSeed to
 // seed the data. addSubTree will add the data created in the subtree to the
-// Tree as well. The tree must have the proveIndex set separately.
+// Tree as well. The tree must have the SetIndex set separately.
 func addSubTree(height uint64, dataSeed []byte, subtreeProveIndex uint64, fullTree *Tree) (subTree *Tree) {
 	data := sum(sha256.New(), dataSeed)
 	leaves := 1 << height
