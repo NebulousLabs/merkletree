@@ -117,6 +117,57 @@ func main() {
 	merkleRoot, proof, numLeaves, _ = merkletree.BuildReaderProofSlice(file, sha256.New(), segmentSize, proofBegin, proofEnd)
 	verified = merkletree.VerifyProofOfSlice(sha256.New(), merkleRoot, proof, proofBegin, proofEnd, numLeaves)
 
+	// Example 9: Cached tree of height 2, with proof slice entirely inside
+	// one cached subtree.
+	cachedTree = merkletree.NewCachedTree(sha256.New(), 2)
+	cachedTree.SetSlice(5, 7)
+	subtree1 = merkletree.New(sha256.New())
+	subtree1.Push([]byte("first leaf, first subtree"))
+	subtree1.Push([]byte("second leaf, first subtree"))
+	subtree1.Push([]byte("third leaf, first subtree"))
+	subtree1.Push([]byte("fourth leaf, first subtree"))
+	subtree2 = merkletree.New(sha256.New())
+	subtree2.SetSlice(1, 3)
+	subtree2.Push([]byte("first leaf, second subtree"))
+	subtree2.Push([]byte("second leaf, second subtree")) // in proof slice
+	subtree2.Push([]byte("third leaf, second subtree")) // in proof slice
+	subtree2.Push([]byte("fourth leaf, second subtree"))
+	cachedTree.Push(subtree1.Root())
+	cachedTree.Push(subtree2.Root())
+	_, subtreeProof, _, _ = subtree2.Prove()
+	// Now we can create the full proof for the cached tree, without having to
+	// rehash any of the elements from subtree1.
+	merkleRoot, fullProof, _, numLeaves = cachedTree.Prove(subtreeProof)
+	verified = merkletree.VerifyProofOfSlice(sha256.New(), merkleRoot, fullProof, 1, 3, numLeaves)
+
+	// Example 10: Cached tree of height 1, with proof slice consisting
+	// of several full subtrees.
+	cachedTree = merkletree.NewCachedTree(sha256.New(), 1)
+	cachedTree.SetSlice(2, 6)
+	subtree1 = merkletree.New(sha256.New())
+	subtree1.Push([]byte("first leaf, first subtree"))
+	subtree1.Push([]byte("second leaf, first subtree"))
+	subtree2 = merkletree.New(sha256.New())
+	subtree2.SetSlice(0, 2)
+	subtree2.Push([]byte("first leaf, second subtree")) // in proof slice
+	subtree2.Push([]byte("second leaf, second subtree")) // in proof slice
+	subtree3 := merkletree.New(sha256.New())
+	subtree3.SetSlice(0, 2)
+	subtree3.Push([]byte("first leaf, third subtree")) // in proof slice
+	subtree3.Push([]byte("second leaf, third subtree")) // in proof slice
+	subtree4 := merkletree.New(sha256.New())
+	subtree4.Push([]byte("first leaf, fourth subtree"))
+	subtree4.Push([]byte("second leaf, fourth subtree"))
+	cachedTree.Push(subtree1.Root())
+	cachedTree.Push(subtree2.Root())
+	cachedTree.Push(subtree2.Root())
+	cachedTree.Push(subtree4.Root())
+	_, subtreeProof1, _, _ := subtree2.Prove()
+	_, subtreeProof2, _, _ := subtree3.Prove()
+	subtreeProof = append(subtreeProof1, subtreeProof2...)
+	merkleRoot, fullProof, _, numLeaves = cachedTree.Prove(subtreeProof)
+	verified = merkletree.VerifyProofOfSlice(sha256.New(), merkleRoot, fullProof, 2, 6, numLeaves)
+
 	_ = verified
 	_ = collectiveRoot
 	_ = revisedRoot
