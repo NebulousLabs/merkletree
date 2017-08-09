@@ -19,6 +19,19 @@ func VerifyProof(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofIndex u
 // root is nil, and if 'numLeaves' equals 0. Can be used with proofs returned
 // by Tree.Prove and CachedTree.Prove.
 func VerifyProofOfSlice(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofBegin, proofEnd, numLeaves uint64) bool {
+	return verifyProofOfSlice(h, false, merkleRoot, proofSet, proofBegin, proofEnd, numLeaves)
+}
+
+// VerifyProofOfSlice takes a Merkle root, a proofSet, and the slice and returns
+// true if the first proofEnd-proofBegin elements of the proof set are roots
+// of cached elements in the Merkle root. False is returned if the proof set or Merkle
+// root is nil, and if 'numLeaves' equals 0. Can be used with proofs returned
+// by CachedTree.ProveCached.
+func VerifyProofOfCachedElements(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofBegin, proofEnd, numLeaves uint64) bool {
+	return verifyProofOfSlice(h, true, merkleRoot, proofSet, proofBegin, proofEnd, numLeaves)
+}
+
+func verifyProofOfSlice(h hash.Hash, proveCached bool, merkleRoot []byte, proofSet [][]byte, proofBegin, proofEnd, numLeaves uint64) bool {
 	// Return false for nonsense input.
 	if merkleRoot == nil {
 		return false
@@ -36,7 +49,11 @@ func VerifyProofOfSlice(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proof
 		if len(proofSet) == 0 {
 			return false
 		}
-		sums = append(sums, leafSum(h, proofSet[0]))
+		if proveCached {
+			sums = append(sums, proofSet[0])
+		} else {
+			sums = append(sums, leafSum(h, proofSet[0]))
+		}
 		proofSet = proofSet[1:]
 	}
 

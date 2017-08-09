@@ -408,6 +408,53 @@ func TestCachedTreeConstruction(t *testing.T) {
 	if !VerifyProofOfSlice(sha256.New(), root, proofSet, 4, 12, numLeaves) {
 		t.Error("proof was unsuccessful")
 	}
+
+	// Try creating a cached proof of cached elements with cache height 2, 3 cached nodes, slice 4-11.
+	tree = New(sha256.New())
+	subTree1 = New(sha256.New())
+	subTree2 = New(sha256.New())
+	subTree3 = New(sha256.New())
+	cachedTree = NewCachedTree(sha256.New(), 2)
+	err = cachedTree.SetSlice(4, 12)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Build the subtrees.
+	subTree1.Push(arbData[0])
+	subTree1.Push(arbData[1])
+	subTree1.Push(arbData[2])
+	subTree1.Push(arbData[3])
+	subTree2.Push(arbData[4])
+	subTree2.Push(arbData[5])
+	subTree2.Push(arbData[6])
+	subTree2.Push(arbData[7])
+	subTree3.Push(arbData[1])
+	subTree3.Push(arbData[3])
+	subTree3.Push(arbData[5])
+	subTree3.Push(arbData[7])
+	// Supply the cached root to the cached tree.
+	cachedTree.Push(subTree1.Root())
+	cachedTree.Push(subTree2.Root())
+	cachedTree.Push(subTree3.Root())
+	// Get the root from the tree, to have certainty about integrity.
+	tree.Push(arbData[0])
+	tree.Push(arbData[1])
+	tree.Push(arbData[2])
+	tree.Push(arbData[3])
+	tree.Push(arbData[4])
+	tree.Push(arbData[5])
+	tree.Push(arbData[6])
+	tree.Push(arbData[7])
+	tree.Push(arbData[1])
+	tree.Push(arbData[3])
+	tree.Push(arbData[5])
+	tree.Push(arbData[7])
+	root = tree.Root()
+	// Construct the proofs.
+	_, proofSet, _, _ = cachedTree.ProveCached()
+	if !VerifyProofOfCachedElements(sha256.New(), root, proofSet, 1, 3, 3) {
+		t.Error("proof was unsuccessful")
+	}
 }
 
 // TestCachedTreeConstructionAuto uses automation to build out a wide set of

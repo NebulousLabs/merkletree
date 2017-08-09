@@ -168,6 +168,29 @@ func main() {
 	merkleRoot, fullProof, _, numLeaves = cachedTree.Prove(subtreeProof)
 	verified = merkletree.VerifyProofOfSlice(sha256.New(), merkleRoot, fullProof, 2, 6, numLeaves)
 
+	// Example 11: Cached tree of height 1, with proof slice consisting
+	// of cached elements hashes.
+	cachedTree = merkletree.NewCachedTree(sha256.New(), 1)
+	cachedTree.SetSlice(2, 6)
+	subtree1 = merkletree.New(sha256.New())
+	subtree1.Push([]byte("first leaf, first subtree"))
+	subtree1.Push([]byte("second leaf, first subtree"))
+	subtree2 = merkletree.New(sha256.New())
+	subtree2.Push([]byte("first leaf, second subtree")) // in proof slice
+	subtree2.Push([]byte("second leaf, second subtree")) // in proof slice
+	subtree3 = merkletree.New(sha256.New())
+	subtree3.Push([]byte("first leaf, third subtree")) // in proof slice
+	subtree3.Push([]byte("second leaf, third subtree")) // in proof slice
+	subtree4 = merkletree.New(sha256.New())
+	subtree4.Push([]byte("first leaf, fourth subtree"))
+	subtree4.Push([]byte("second leaf, fourth subtree"))
+	cachedTree.Push(subtree1.Root())
+	cachedTree.Push(subtree2.Root())
+	cachedTree.Push(subtree2.Root())
+	cachedTree.Push(subtree4.Root())
+	merkleRoot, fullProof, _, numLeaves = cachedTree.ProveCached()
+	verified = merkletree.VerifyProofOfCachedElements(sha256.New(), merkleRoot, fullProof, 1, 3, numLeaves)
+
 	_ = verified
 	_ = collectiveRoot
 	_ = revisedRoot

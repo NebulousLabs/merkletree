@@ -38,6 +38,7 @@ func NewCachedTree(h hash.Hash, cachedNodeHeight uint64) *CachedTree {
 // must be covered entirely), cachedProofSet is concatenation of proofs of
 // cached elements. After proof is called, the CachedTree is unchanged, and
 // can receive more elements.
+// Use VerifyProof or VerifyProofOfSlice to verify proofSet returned by this method.
 func (ct *CachedTree) Prove(cachedProofSet [][]byte) (merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) {
 	// Determine the proof index within the full tree, and the number of leaves
 	// within the full tree.
@@ -61,6 +62,30 @@ func (ct *CachedTree) Prove(cachedProofSet [][]byte) (merkleRoot []byte, proofSe
 	// this data exists and therefore it needs to be omitted from the proof
 	// set.
 	proofSet = append(cachedProofSet, proofSetTail[cut:]...)
+	return merkleRoot, proofSet, ct.trueProofBegin, numLeaves
+}
+
+// ProveCached will create a proof of cached element values.
+// SetSlice must be called on a slice of leaves belonging to entire
+// cached elements.
+// Use VerifyProofOfCachedElements to verify proofSet returned by this method.
+func (ct *CachedTree) ProveCached() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) {
+	// Determine the proof index within the full tree, and the number of leaves
+	// within the full tree.
+	leavesPerCachedNode := uint64(1) << ct.cachedNodeHeight
+	numLeaves = leavesPerCachedNode * ct.currentIndex
+
+	// Get the proof set, which is generated based entirely on cached nodes.
+	merkleRoot, proofSet, _, _ = ct.Tree.Prove()
+	if len(proofSet) < 1 {
+		// The proof was invalid, return 'nil' for the proof set but accurate
+		// values for everything else.
+		return merkleRoot, nil, ct.trueProofBegin, numLeaves
+	}
+	if (ct.trueProofEnd-ct.trueProofBegin)%(1<<ct.cachedNodeHeight) != 0 {
+		// SetIndex was called or SetSlice for a part of one cached element.
+		return merkleRoot, nil, ct.trueProofBegin, numLeaves
+	}
 	return merkleRoot, proofSet, ct.trueProofBegin, numLeaves
 }
 
