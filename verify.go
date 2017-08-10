@@ -22,11 +22,11 @@ func VerifyProofOfSlice(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proof
 	return verifyProofOfSlice(h, false, merkleRoot, proofSet, proofBegin, proofEnd, numLeaves)
 }
 
-// VerifyProofOfSlice takes a Merkle root, a proofSet, and the slice and returns
-// true if the first proofEnd-proofBegin elements of the proof set are roots
-// of cached elements in the Merkle root. False is returned if the proof set or Merkle
-// root is nil, and if 'numLeaves' equals 0. Can be used with proofs returned
-// by CachedTree.ProveCached.
+// VerifyProofOfCachedElements takes a Merkle root, a proofSet, and the slice
+// and returns true if the first proofEnd-proofBegin elements of the proof set
+// are roots of cached elements in the Merkle root. False is returned if
+// the proof set or Merkle root is nil, and if 'numLeaves' equals 0.
+// Can be used with proofs returned by CachedTree.ProveCached.
 func VerifyProofOfCachedElements(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofBegin, proofEnd, numLeaves uint64) bool {
 	return verifyProofOfSlice(h, true, merkleRoot, proofSet, proofBegin, proofEnd, numLeaves)
 }
@@ -76,7 +76,7 @@ func verifyProofOfSlice(h hash.Hash, proveCached bool, merkleRoot []byte, proofS
 			left := proofSet[0]
 			proofSet = proofSet[1:]
 			sums = append([][]byte{left}, sums...)
-			proofBegin -= 1
+			proofBegin--
 		}
 		if len(sums)%2 == 1 && proofEnd < numLeaves {
 			//  Example: addition of % on level <-
@@ -90,7 +90,7 @@ func verifyProofOfSlice(h hash.Hash, proveCached bool, merkleRoot []byte, proofS
 			right := proofSet[0]
 			proofSet = proofSet[1:]
 			sums = append(sums, right)
-			proofEnd += 1
+			proofEnd++
 		}
 		var sums2 [][]byte
 		for len(sums) >= 2 {

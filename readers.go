@@ -52,7 +52,7 @@ func BuildReaderProof(r io.Reader, h hash.Hash, segmentSize int, index uint64) (
 	return BuildReaderProofSlice(r, h, segmentSize, index, index+1)
 }
 
-// BuildReaderProof returns a proof that certain data is in the merkle tree
+// BuildReaderProofSlice returns a proof that certain data is in the merkle tree
 // created by the data in the reader. The merkle root, set of proofs, and the
 // number of leaves in the Merkle tree are all returned. All leaves will we
 // 'segmentSize' bytes except the last leaf, which will not be padded out if
