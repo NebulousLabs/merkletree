@@ -1324,7 +1324,7 @@ func TestCompatibilitySlice(t *testing.T) {
 				// Build the proof for the tree and run it through verify.
 				_, proofSet, proofBegin, _ := tree.Prove()
 				if proofBegin != a {
-					t.Error("proofBegin=%d, want %d", proofBegin, a)
+					t.Errorf("proofBegin=%d, want %d", proofBegin, a)
 				}
 				if !VerifyProofOfSlice(sha256.New(), merkleRoot, proofSet, a, b, numLeaves) {
 					t.Error("proof didn't verify for indices", a, b)
