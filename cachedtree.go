@@ -58,7 +58,7 @@ func (ct *CachedTree) Prove(cachedProofSet [][]byte) (merkleRoot []byte, proofSe
 	return merkleRoot, proofSet, ct.trueProofIndex, numLeaves
 }
 
-// SetIndex will informed the CachedTree of the index of the leaf for which a
+// SetIndex will inform the CachedTree of the index of the leaf for which a
 // storage proof is being created. The index should be the index of the actual
 // leaf, and not the index of the cached element containing the leaf. SetIndex
 // must be called on empty CachedTree.

@@ -368,13 +368,13 @@ func TestBadInputs(t *testing.T) {
 		t.Error("VerifyProof should return false for nil proof set")
 	}
 	if VerifyProof(sha256.New(), mt.roots[15], mt.proofSets[15][3][1:], 3, 15) {
-		t.Error("VerifyPRoof should return false for too-short proof set")
+		t.Error("VerifyProof should return false for too-short proof set")
 	}
 	if VerifyProof(sha256.New(), mt.roots[15], mt.proofSets[15][10][1:], 10, 15) {
-		t.Error("VerifyPRoof should return false for too-short proof set")
+		t.Error("VerifyProof should return false for too-short proof set")
 	}
 	if VerifyProof(sha256.New(), mt.roots[15], mt.proofSets[15][10], 15, 0) {
-		t.Error("VerifyPRoof should return false when numLeaves is 0")
+		t.Error("VerifyProof should return false when numLeaves is 0")
 	}
 }
 
