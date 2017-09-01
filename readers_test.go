@@ -92,7 +92,7 @@ func TestBuildReaderProofPadding(t *testing.T) {
 		t.Error("ReaderRoot returned the wrong root")
 	}
 	if len(proofSet) != 1 {
-		t.Fatal("proofSet is the incorrect lenght")
+		t.Fatal("proofSet is the incorrect length")
 	}
 	if bytes.Compare(proofSet[0], []byte{1}) != 0 {
 		t.Error("proofSet is incorrect")
