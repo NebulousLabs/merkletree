@@ -49,10 +49,20 @@ func ReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err err
 // 'segmentSize' bytes except the last leaf, which will not be padded out if
 // there are not enough bytes remaining in the reader.
 func BuildReaderProof(r io.Reader, h hash.Hash, segmentSize int, index uint64) (root []byte, proofSet [][]byte, numLeaves uint64, err error) {
+	return BuildReaderProofSlice(r, h, segmentSize, index, index+1)
+}
+
+// BuildReaderProofSlice returns a proof that certain data is in the merkle tree
+// created by the data in the reader. The merkle root, set of proofs, and the
+// number of leaves in the Merkle tree are all returned. All leaves will we
+// 'segmentSize' bytes except the last leaf, which will not be padded out if
+// there are not enough bytes remaining in the reader.
+// This function creates the proof of slice [proofBegin, proofEnd).
+func BuildReaderProofSlice(r io.Reader, h hash.Hash, segmentSize int, proofBegin, proofEnd uint64) (root []byte, proofSet [][]byte, numLeaves uint64, err error) {
 	tree := New(h)
-	err = tree.SetIndex(index)
+	err = tree.SetSlice(proofBegin, proofEnd)
 	if err != nil {
-		// This code should be unreachable - SetIndex will only return an error
+		// This code should be unreachable - SetSlice will only return an error
 		// if the tree is not empty, and yet the tree should be empty at this
 		// point.
 		panic(err)
@@ -63,7 +73,7 @@ func BuildReaderProof(r io.Reader, h hash.Hash, segmentSize int, index uint64) (
 	}
 	root, proofSet, _, numLeaves = tree.Prove()
 	if len(proofSet) == 0 {
-		err = errors.New("index was not reached while creating proof")
+		err = errors.New("proof slice was not reached while creating proof")
 		return
 	}
 	return

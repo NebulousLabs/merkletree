@@ -102,9 +102,49 @@ func TestBuildReaderProofPadding(t *testing.T) {
 	}
 }
 
-// TestEmptyReader passes an empty reader into BuildReaderProof.
+// TestBuildReaderProofSlicePadding passes BuildReaderProofSlice a reader that has too
+// few bytes to fill the last segment. The segment should not be padded out.
+func TestBuildReaderProofSlicePadding(t *testing.T) {
+	bytes1 := []byte{1, 2, 3, 4, 5}
+	reader := bytes.NewReader(bytes1)
+	root, proofSet, numLeaves, err := BuildReaderProofSlice(reader, sha256.New(), 2, 1, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	base12 := sum(sha256.New(), []byte{0, 1, 2})
+	base34 := sum(sha256.New(), []byte{0, 3, 4})
+	base5 := sum(sha256.New(), []byte{0, 5})
+	node1234 := sum(sha256.New(), append(append([]byte{1}, base12...), base34...))
+	expectedRoot := sum(sha256.New(), append(append([]byte{1}, node1234...), base5...))
+
+	if bytes.Compare(root, expectedRoot) != 0 {
+		t.Error("ReaderRoot returned the wrong root")
+	}
+	if len(proofSet) != 3 {
+		t.Fatalf("proofSet is the incorrect lenght: %d", len(proofSet))
+	}
+	if bytes.Compare(proofSet[0], []byte{3, 4}) != 0 {
+		t.Error("proofSet is incorrect")
+	}
+	if bytes.Compare(proofSet[1], []byte{5}) != 0 {
+		t.Error("proofSet is incorrect")
+	}
+	if bytes.Compare(proofSet[2], base12) != 0 {
+		t.Error("proofSet is incorrect")
+	}
+	if numLeaves != 3 {
+		t.Error("wrong number of leaves returned")
+	}
+}
+
+// TestEmptyReader passes an empty reader into BuildReaderProof and BuildReaderProofSlice.
 func TestEmptyReader(t *testing.T) {
 	_, _, _, err := BuildReaderProof(new(bytes.Reader), sha256.New(), 64, 5)
+	if err == nil {
+		t.Error(err)
+	}
+	_, _, _, err = BuildReaderProofSlice(new(bytes.Reader), sha256.New(), 64, 5, 6)
 	if err == nil {
 		t.Error(err)
 	}

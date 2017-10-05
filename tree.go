@@ -7,9 +7,10 @@ import (
 
 // A Tree takes data as leaves and returns the Merkle root. Each call to 'Push'
 // adds one leaf to the Merkle tree. Calling 'Root' returns the Merkle root.
-// The Tree also constructs proof that a single leaf is a part of the tree. The
-// leaf can be chosen with 'SetIndex'. The memory footprint of Tree grows in
-// O(log(n)) in the number of leaves.
+// The Tree also constructs proof that a single leaf or a slice of leaves is
+// a part of the tree. The leaf can be chosen with 'SetIndex'. The slice can
+// be chosen with 'SetSlice'. The memory footprint of Tree grows in O(log(n))
+// in the number of leaves.
 type Tree struct {
 	// The Tree is stored as a stack of subtrees. Each subtree has a height,
 	// and is the Merkle root of 2^height leaves. A Tree with 11 nodes is
@@ -21,13 +22,15 @@ type Tree struct {
 	head *subTree
 	hash hash.Hash
 
-	// Helper variables used to construct proofs that the data at 'proofIndex'
+	// Helper variables used to construct proofs that the data at slice from
+	// 'proofBegin' to 'proofEnd' (a single leaf if a slice of length 1)
 	// is in the Merkle tree. The proofSet is constructed as elements are being
-	// added to the tree. The first element of the proof set is the original
-	// data used to create the leaf at index 'proofIndex'.
-	currentIndex uint64
-	proofIndex   uint64
-	proofSet     [][]byte
+	// added to the tree. The first elements of the proof set are the original
+	// data used to create the leaf at indices from 'proofBegin' to 'proofEnd'.
+	currentIndex         uint64
+	proofBegin, proofEnd uint64
+	lader                [][][]byte
+	bases                [][]byte
 
 	// The cachedTree flag indicates that the tree is cached, meaning that
 	// different code is used in 'Push' for creating a new head subtree. Adding
@@ -40,9 +43,15 @@ type Tree struct {
 // of the Tree. 'sum' is the Merkle root of the subTree. If 'next' is not nil,
 // it will be a tree with a higher height.
 type subTree struct {
-	next   *subTree
-	height int // Int is okay because a height over 300 is physically unachievable.
-	sum    []byte
+	next       *subTree
+	height     int // Int is okay because a height over 300 is physically unachievable.
+	begin, end uint64
+	sum        []byte
+}
+
+func (s *subTree) contains(t *Tree) bool {
+	return (s.begin <= t.proofBegin && t.proofBegin < s.end) ||
+		(t.proofBegin <= s.begin && s.begin < t.proofEnd)
 }
 
 // sum returns the hash of the input data using the specified algorithm.
@@ -78,84 +87,114 @@ func joinSubTrees(h hash.Hash, a, b *subTree) *subTree {
 		if a.height < b.height {
 			panic("invalid subtree presented - height mismatch")
 		}
+		if a.end != b.begin {
+			panic("the subtrees are not adjacent")
+		}
 	}
 
 	return &subTree{
 		next:   a.next,
 		height: a.height + 1,
+		begin:  a.begin,
+		end:    b.end,
 		sum:    nodeSum(h, a.sum, b.sum),
 	}
+}
+
+// proofLader stores hashes that are proof parts.
+// proofLader[height] is the list of hashes of subtrees
+// of height 'height' in the correct order.
+type proofLader [][][]byte
+
+// addToLader returns new proofLader with one new element.
+func addToLader(lader proofLader, height int, proof []byte) proofLader {
+	for len(lader) <= height {
+		lader = append(lader, nil)
+	}
+	lader[height] = append(lader[height], proof)
+	return lader
+}
+
+// cloneLader returns deep copy of proofLader.
+func cloneLader(lader proofLader) proofLader {
+	lader2 := make(proofLader, len(lader))
+	for i, step := range lader {
+		step2 := make([][]byte, len(step))
+		copy(step2, step)
+		lader2[i] = step2
+	}
+	return lader2
+}
+
+// foldLader converts proofLader to the tail of the proof.
+// To generate a valid proof, concatenate data from the target slice
+// (one element of the target slice = one element in the proof) with
+// the output of foldLader.
+func foldLader(lader proofLader) [][]byte {
+	var proofs [][]byte
+	for _, step := range lader {
+		if len(step) > 2 {
+			panic("More than 2 proofs of same height in proofSet")
+		}
+		for _, proof := range step {
+			proofs = append(proofs, proof)
+		}
+	}
+	return proofs
 }
 
 // New creates a new Tree. The provided hash will be used for all hashing
 // operations within the Tree.
 func New(h hash.Hash) *Tree {
 	return &Tree{
-		hash: h,
+		hash:       h,
+		proofBegin: 0,
+		proofEnd:   1,
 	}
 }
 
 // Prove creates a proof that the leaf at the established index (established by
-// SetIndex) is an element of the Merkle tree. Prove will return a nil proof
-// set if used incorrectly. Prove does not modify the Tree.
-func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64, numLeaves uint64) {
-	// Return nil if the Tree is empty, or if the proofIndex hasn't yet been
+// SetIndex) or the slice of leaves (established by SetSlice) belongs to the
+// Merkle tree. Prove will return a nil proof set if used incorrectly.
+// Prove does not modify the Tree.
+func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofBegin uint64, numLeaves uint64) {
+	// Return nil if the Tree is empty, or if the proofEnd hasn't yet been
 	// reached.
-	if t.head == nil || len(t.proofSet) == 0 {
-		return t.Root(), nil, t.proofIndex, t.currentIndex
+	if t.head == nil || t.currentIndex < t.proofEnd {
+		return t.Root(), nil, t.proofBegin, t.currentIndex
 	}
-	proofSet = t.proofSet
+	proofSet = make([][]byte, len(t.bases))
+	copy(proofSet, t.bases)
 
-	// The set of subtrees must now be collapsed into a single root. The proof
-	// set already contains all of the elements that are members of a complete
-	// subtree. Of what remains, there will be at most 1 element provided from
-	// a sibling on the right, and all of the other proofs will be provided
-	// from a sibling on the left. This results from the way orphans are
-	// treated. All subtrees smaller than the subtree containing the proofIndex
-	// will be combined into a single subtree that gets combined with the
-	// proofIndex subtree as a single right sibling. All subtrees larger than
-	// the subtree containing the proofIndex will be combined with the subtree
-	// containing the proof index as left siblings.
-
-	// Start at the smallest subtree and combine it with larger subtrees until
-	// it would be combining with the subtree that contains the proof index. We
-	// can recognize the subtree containing the proof index because the height
-	// of that subtree will be one less than the current length of the proof
-	// set.
+	// The set of subtrees must now be collapsed into a single root.
+	// Unlike Push, now we ignore previous height of the right subtree,
+	// because we have to collapse all leaves anyway.
+	// All needed hashes are added to the ladder.
 	current := t.head
-	for current.next != nil && current.next.height < len(proofSet)-1 {
+	lader := cloneLader(t.lader)
+	for current.next != nil {
+		// The left subtree is higher or equal to the right subtree.
+		// If the right subtree is incomplete, its height is considered
+		// to be equal to its left sibling.
+		height := current.next.height
+		if current.contains(t) && !current.next.contains(t) {
+			lader = addToLader(lader, height, current.next.sum)
+		} else if !current.contains(t) && current.next.contains(t) {
+			lader = addToLader(lader, height, current.sum)
+		}
+
 		current = joinSubTrees(t.hash, current.next, current)
 	}
+	proofSet = append(proofSet, foldLader(lader)...)
 
 	// Sanity check - check that either 'current' or 'current.next' is the
-	// subtree containing the proof index.
+	// subtree containing the proof slice.
 	if DEBUG {
-		if current.height != len(t.proofSet)-1 && (current.next != nil && current.next.height != len(t.proofSet)-1) {
-			panic("could not find the subtree containing the proof index")
+		if !current.contains(t) && !current.next.contains(t) {
+			panic("could not find the subtree containing the proof slice")
 		}
 	}
-
-	// If the current subtree is not the subtree containing the proof index,
-	// then it must be an aggregate subtree that is to the right of the subtree
-	// containing the proof index, and the next subtree is the subtree
-	// containing the proof index.
-	if current.next != nil && current.next.height == len(proofSet)-1 {
-		proofSet = append(proofSet, current.sum)
-		current = current.next
-	}
-
-	// The current subtree must be the subtree containing the proof index. This
-	// subtree does not need an entry, as the entry was created during the
-	// construction of the Tree. Instead, skip to the next subtree.
-	current = current.next
-
-	// All remaining subtrees will be added to the proof set as a left sibling,
-	// completing the proof set.
-	for current != nil {
-		proofSet = append(proofSet, current.sum)
-		current = current.next
-	}
-	return t.Root(), proofSet, t.proofIndex, t.currentIndex
+	return t.Root(), proofSet, t.proofBegin, t.currentIndex
 }
 
 // Push will add data to the set, building out the Merkle tree and Root. The
@@ -166,8 +205,8 @@ func (t *Tree) Prove() (merkleRoot []byte, proofSet [][]byte, proofIndex uint64,
 func (t *Tree) Push(data []byte) {
 	// The first element of a proof is the data at the proof index. If this
 	// data is being inserted at the proof index, it is added to the proof set.
-	if t.currentIndex == t.proofIndex {
-		t.proofSet = append(t.proofSet, data)
+	if t.proofBegin <= t.currentIndex && t.currentIndex < t.proofEnd {
+		t.bases = append(t.bases, data)
 	}
 
 	// Hash the data to create a subtree of height 0. The sum of the new node
@@ -177,6 +216,8 @@ func (t *Tree) Push(data []byte) {
 	t.head = &subTree{
 		next:   t.head,
 		height: 0,
+		begin:  t.currentIndex,
+		end:    t.currentIndex + 1,
 	}
 	if t.cachedTree {
 		t.head.sum = data
@@ -189,32 +230,18 @@ func (t *Tree) Push(data []byte) {
 	// be combined into a single subTree of height n+1.
 	for t.head.next != nil && t.head.height == t.head.next.height {
 		// Before combining subtrees, check whether one of the subtree hashes
-		// needs to be added to the proof set. This is going to be true IFF the
-		// subtrees being combined are one height higher than the previous
-		// subtree added to the proof set. The height of the previous subtree
-		// added to the proof set is equal to len(t.proofSet) - 1.
-		if t.head.height == len(t.proofSet)-1 {
-			// One of the subtrees needs to be added to the proof set. The
-			// subtree that needs to be added is the subtree that does not
-			// contain the proofIndex. Because the subtrees being compared are
-			// the smallest and rightmost trees in the Tree, this can be
-			// determined by rounding the currentIndex down to the number of
-			// nodes in the subtree and comparing that index to the proofIndex.
-			leaves := uint64(1 << uint(t.head.height))
-			mid := (t.currentIndex / leaves) * leaves
-			if t.proofIndex < mid {
-				t.proofSet = append(t.proofSet, t.head.sum)
-			} else {
-				t.proofSet = append(t.proofSet, t.head.next.sum)
-			}
+		// needs to be added to the proof set. This is going to be true IFF
+		// one of the subtrees being combined overlaps with the target slice
+		// and another does not.
+		var proof []byte
+		if t.head.contains(t) && !t.head.next.contains(t) {
+			proof = t.head.next.sum
+		} else if !t.head.contains(t) && t.head.next.contains(t) {
+			proof = t.head.sum
+		}
 
-			// Sanity check - the proofIndex should never be less than the
-			// midpoint minus the number of leaves in each subtree.
-			if DEBUG {
-				if t.proofIndex < mid-leaves {
-					panic("proof being added with weird values")
-				}
-			}
+		if proof != nil {
+			t.lader = addToLader(t.lader, t.head.height, proof)
 		}
 
 		// Join the two subTrees into one subTree with a greater height. Then
@@ -258,9 +285,16 @@ func (t *Tree) Root() []byte {
 // SetIndex will tell the Tree to create a storage proof for the leaf at the
 // input index. SetIndex must be called on an empty tree.
 func (t *Tree) SetIndex(i uint64) error {
+	return t.SetSlice(i, i+1)
+}
+
+// SetSlice will tell the Tree to create a storage proof for the leaves
+// within the slice [begin, end). SetSlice must be called on an empty tree.
+func (t *Tree) SetSlice(begin, end uint64) error {
 	if t.head != nil {
-		return errors.New("cannot call SetIndex on Tree if Tree has not been reset")
+		return errors.New("cannot call SetIndex or SetSlice on Tree if Tree has not been reset")
 	}
-	t.proofIndex = i
+	t.proofBegin = begin
+	t.proofEnd = end
 	return nil
 }
