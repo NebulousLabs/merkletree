@@ -27,6 +27,7 @@ func VerifyProofOfSlice(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proof
 // are roots of cached elements in the Merkle root. False is returned if
 // the proof set or Merkle root is nil, and if 'numLeaves' equals 0.
 // Can be used with proofs returned by CachedTree.ProveCached.
+// 'numLeaves' is the total number of cached elements.
 func VerifyProofOfCachedElements(h hash.Hash, merkleRoot []byte, proofSet [][]byte, proofBegin, proofEnd, numLeaves uint64) bool {
 	return verifyProofOfSlice(h, true, merkleRoot, proofSet, proofBegin, proofEnd, numLeaves)
 }
