@@ -335,6 +335,7 @@ func TestBuildAndVerifyProof(t *testing.T) {
 func TestBadInputs(t *testing.T) {
 	// Get the root and proof of an empty tree.
 	tree := New(sha256.New())
+	tree.SetIndex(0)
 	root := tree.Root()
 	if root != nil {
 		t.Error("root of empty tree should be nil")
@@ -480,6 +481,70 @@ func TestLeafCounts(t *testing.T) {
 	_, _, _, leaves = tree.Prove()
 	if leaves != 1 {
 		t.Error("bad reporting on leaf count")
+	}
+}
+
+// TestPushSubTree tests PushSubTree by providing valid inputs.
+func TestPushSubTree(t *testing.T) {
+	// Get the root and proof of an empty tree.
+	tree := New(sha256.New())
+
+	// Add a subTree of height 5 to the empty tree.
+	if err := tree.PushSubTree(5, []byte{}); err != nil {
+		t.Fatal(err)
+	}
+	if tree.Root() == nil {
+		t.Fatal("root should not be nil after adding a subTree")
+	}
+	// Add a subTree of a height >5 to the tree. This should not be possible.
+	if err := tree.PushSubTree(6, []byte{}); err == nil {
+		t.Fatal("pushing a subTree with a larger height than the smallest subTree should fail")
+	}
+	// The current index should be 2^5
+	expectedIndex := uint64(1 << 5)
+	if tree.currentIndex != expectedIndex {
+		t.Errorf("expected index %v but was %v", expectedIndex, tree.currentIndex)
+	}
+	// Add a subTree of the same height as the smallest subTree in the merkle
+	// tree and check again.
+	if err := tree.PushSubTree(5, []byte{}); err != nil {
+		t.Fatal(err)
+	}
+	if tree.currentIndex != 2*expectedIndex {
+		t.Errorf("expected index %v but was %v", 2*expectedIndex, tree.currentIndex)
+	}
+
+	// Create a new tree and set the proof index to 1. Afterwards we push twice
+	// to create a subTree of height 1 that contains the proof index.
+	tree2 := New(sha256.New())
+	tree2.SetIndex(1)
+	tree2.Push([]byte{})
+	tree2.Push([]byte{})
+	// Push a subTree of height 1. That should be fine.
+	if err := tree2.PushSubTree(1, []byte{}); err != nil {
+		t.Fatal(err)
+	}
+	// Create a new tree and set the proof index to 3. Afterwards we push twice
+	// to create a subTree of height 1.
+	tree3 := New(sha256.New())
+	tree3.SetIndex(2)
+	tree3.Push([]byte{})
+	tree3.Push([]byte{})
+	// Push a subTree of height 1. That shouldn't work since the subTree can't
+	// contain the piece for the proof.
+	if err := tree3.PushSubTree(1, []byte{}); err == nil {
+		t.Fatal("we shouldn't be able to push a subTree that contains the proof index")
+	}
+	// Create a new tree and set the proof index to 4. Afterwards we push twice
+	// to create a subTree of height 1.
+	tree4 := New(sha256.New())
+	tree4.SetIndex(3)
+	tree4.Push([]byte{})
+	tree4.Push([]byte{})
+	// Push a subTree of height 1. That shouldn't work since the subTree can't
+	// contain the piece for the proof.
+	if err := tree4.PushSubTree(1, []byte{}); err == nil {
+		t.Fatal("we shouldn't be able to push a subTree that contains the proof index")
 	}
 }
 

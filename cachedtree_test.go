@@ -154,16 +154,19 @@ func TestCachedTreeConstruction(t *testing.T) {
 
 	// Try proving on an uninitialized cached tree.
 	cachedTree = NewCachedTree(sha256.New(), 0)
+	cachedTree.SetIndex(0)
 	_, proofSet, _, _ := cachedTree.Prove(nil)
 	if proofSet != nil {
 		t.Error("proving an empty set resulted in a valid proof?")
 	}
 	cachedTree = NewCachedTree(sha256.New(), 1)
+	cachedTree.SetIndex(0)
 	_, proofSet, _, _ = cachedTree.Prove(nil)
 	if proofSet != nil {
 		t.Error("proving an empty set resulted in a valid proof?")
 	}
 	cachedTree = NewCachedTree(sha256.New(), 2)
+	cachedTree.SetIndex(0)
 	_, proofSet, _, _ = cachedTree.Prove(nil)
 	if proofSet != nil {
 		t.Error("proving an empty set resulted in a valid proof?")
