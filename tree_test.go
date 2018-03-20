@@ -7,6 +7,9 @@ import (
 	"math/big"
 	"strconv"
 	"testing"
+
+	"github.com/NebulousLabs/errors"
+	"github.com/NebulousLabs/fastrand"
 )
 
 // A MerkleTester contains data types that can be filled out manually to
@@ -486,9 +489,96 @@ func TestLeafCounts(t *testing.T) {
 	}
 }
 
-// TestPushSubTree tests PushSubTree by providing valid inputs.
-func TestPushSubTree(t *testing.T) {
-	// Get the root and proof of an empty tree.
+// TestPushSubTreeCorrectRoot creates data for 4 leaves, combines them in
+// different ways and makes sure that the root is always the same.
+func TestPushSubTreeCorrectRoot(t *testing.T) {
+	hash := sha256.New()
+
+	// Create the data for 4 leaves.
+	leaf1Data := fastrand.Bytes(64)
+	leaf2Data := fastrand.Bytes(64)
+	leaf3Data := fastrand.Bytes(64)
+	leaf4Data := fastrand.Bytes(64)
+
+	// Push the leaves into a tree and get the root.
+	tree := New(hash)
+	tree.Push(leaf1Data)
+	tree.Push(leaf2Data)
+	tree.Push(leaf3Data)
+	tree.Push(leaf4Data)
+	expectedRoot := tree.Root()
+
+	// Create 4 height 0 subtrees and combine them. The root should be the
+	// same.
+	tree2 := New(hash)
+	leaf1Hash := leafSum(hash, leaf1Data)
+	leaf2Hash := leafSum(hash, leaf2Data)
+	leaf3Hash := leafSum(hash, leaf3Data)
+	leaf4Hash := leafSum(hash, leaf4Data)
+	err1 := tree2.PushSubTree(0, leaf1Hash)
+	err2 := tree2.PushSubTree(0, leaf2Hash)
+	err3 := tree2.PushSubTree(0, leaf3Hash)
+	err4 := tree2.PushSubTree(0, leaf4Hash)
+	if err := errors.Compose(err1, err2, err3, err4); err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Compare(tree2.Root(), expectedRoot) != 0 {
+		t.Fatal("root doesn't match expected root")
+	}
+
+	// Create 2 height 1 subtrees and combine them. The root should be the
+	// same.
+	tree3 := New(hash)
+	node12Hash := nodeSum(hash, leaf1Hash, leaf2Hash)
+	node34Hash := nodeSum(hash, leaf3Hash, leaf4Hash)
+	err1 = tree3.PushSubTree(1, node12Hash)
+	err2 = tree3.PushSubTree(1, node34Hash)
+	if err := errors.Compose(err1, err2); err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Compare(tree3.Root(), expectedRoot) != 0 {
+		t.Fatal("root doesn't match expected root")
+	}
+
+	// Create 1 height 2 subtree and add it to the tree. The root should be the
+	// same.
+	tree4 := New(hash)
+	node1234Hash := nodeSum(hash, node12Hash, node34Hash)
+	if err := tree4.PushSubTree(2, node1234Hash); err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Compare(tree4.Root(), expectedRoot) != 0 {
+		t.Fatal("root doesn't match expected root")
+	}
+
+	// Create 1 height 1 tree and add 2 height 0 trees. The root should be the
+	// same.
+	tree5 := New(hash)
+	err1 = tree5.PushSubTree(1, node12Hash)
+	err2 = tree5.PushSubTree(0, leaf3Hash)
+	err3 = tree5.PushSubTree(0, leaf4Hash)
+	if err := errors.Compose(err1, err2, err3); err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Compare(tree5.Root(), expectedRoot) != 0 {
+		t.Fatal("root doesn't match expected root")
+	}
+
+	// Create 1 height 1 tree and add 2 leaves. The root should be the same.
+	tree6 := New(hash)
+	if err := tree6.PushSubTree(1, node12Hash); err != nil {
+		t.Fatal(err)
+	}
+	tree6.Push(leaf3Data)
+	tree6.Push(leaf4Data)
+	if bytes.Compare(tree6.Root(), expectedRoot) != 0 {
+		t.Fatal("root doesn't match expected root")
+	}
+}
+
+// TestPushSubTreeSimple tests pushing some valid and invalid subTrees to the
+// tree.
+func TestPushSubTreeSimple(t *testing.T) {
 	tree := New(sha256.New())
 
 	// Add a subTree of height 5 to the empty tree.
