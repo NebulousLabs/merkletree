@@ -64,12 +64,16 @@ func FuzzReadSubTreesWithProof(data []byte) int {
 
 	// Create and verify the proof.
 	merkleRoot, proofSet, proofIndex, numLeaves := tree.Prove()
+	if len(proofSet) == 0 {
+		// proofIndex wasn't reached while creating proof.
+		return 0
+	}
 	if !VerifyProof(sha256.New(), merkleRoot, proofSet, proofIndex, numLeaves) {
 		panic("verification failed!")
 	}
 	// Output is more interesting when there is enough data to contain the
 	// index.
-	if uint64(len(data)) > 64*index {
+	if uint64(len(data)) > uint64(subTreeSize)*index {
 		return 1
 	}
 	return 0
