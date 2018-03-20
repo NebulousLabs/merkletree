@@ -335,7 +335,9 @@ func TestBuildAndVerifyProof(t *testing.T) {
 func TestBadInputs(t *testing.T) {
 	// Get the root and proof of an empty tree.
 	tree := New(sha256.New())
-	tree.SetIndex(0)
+	if err := tree.SetIndex(0); err != nil {
+		t.Fatal(err)
+	}
 	root := tree.Root()
 	if root != nil {
 		t.Error("root of empty tree should be nil")
@@ -517,7 +519,9 @@ func TestPushSubTree(t *testing.T) {
 	// Create a new tree and set the proof index to 1. Afterwards we push twice
 	// to create a subTree of height 1 that contains the proof index.
 	tree2 := New(sha256.New())
-	tree2.SetIndex(1)
+	if err := tree2.SetIndex(1); err != nil {
+		t.Fatal(err)
+	}
 	tree2.Push([]byte{})
 	tree2.Push([]byte{})
 	// Push a subTree of height 1. That should be fine.
@@ -527,7 +531,9 @@ func TestPushSubTree(t *testing.T) {
 	// Create a new tree and set the proof index to 3. Afterwards we push twice
 	// to create a subTree of height 1.
 	tree3 := New(sha256.New())
-	tree3.SetIndex(2)
+	if err := tree3.SetIndex(2); err != nil {
+		t.Fatal(err)
+	}
 	tree3.Push([]byte{})
 	tree3.Push([]byte{})
 	// Push a subTree of height 1. That shouldn't work since the subTree can't
@@ -538,7 +544,9 @@ func TestPushSubTree(t *testing.T) {
 	// Create a new tree and set the proof index to 4. Afterwards we push twice
 	// to create a subTree of height 1.
 	tree4 := New(sha256.New())
-	tree4.SetIndex(3)
+	if err := tree4.SetIndex(3); err != nil {
+		t.Fatal(err)
+	}
 	tree4.Push([]byte{})
 	tree4.Push([]byte{})
 	// Push a subTree of height 1. That shouldn't work since the subTree can't
