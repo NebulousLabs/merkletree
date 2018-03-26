@@ -5,12 +5,12 @@ package merkletree
 import (
 	"bytes"
 	"crypto/sha256"
-	"io"
+	"math"
 )
 
 // Fuzz is called by go-fuzz to look for inputs to BuildReaderProof that will
 // not verify correctly.
-func Fuzz(data []byte) int {
+func FuzzX(data []byte) int {
 	// Use the first two bytes to determine the proof index.
 	if len(data) < 2 {
 		return -1
@@ -39,37 +39,27 @@ func Fuzz(data []byte) int {
 
 // FuzzReadSubTreesWithProof can be used by go-fuzz to test creating a merkle
 // tree from cached subTrees and creating/proving a merkle proof on this tree.
-func FuzzReadSubTreesWithProof(data []byte) int {
-	// Use the first two bytes to determine the proof index.
-	if len(data) < 2 {
+func Fuzz(data []byte) int {
+	// We want at least 2 bytes for the index and 1 for a subTree.
+	if len(data) < 3 {
 		return -1
 	}
-	// Use the first two bytes to determine the proof index.
 	index := 256*uint64(data[0]) + uint64(data[1])
-	tree := New(sha256.New())
-	tree.SetIndex(index)
 	data = data[2:]
-
-	subTreeSize := 1 + 32 // 1 byte height + 32 bytes hash
-	err := tree.readSubTrees(bytes.NewReader(data))
-	if err != nil && err != io.ErrUnexpectedEOF {
-		return 0
-	} else if err == io.ErrUnexpectedEOF && len(data) < subTreeSize {
-		return -1
-	}
+	cachedTree, numLeaves := buildAndCompareTreesFromFuzz(data, index)
 
 	// Create and verify the proof.
-	merkleRoot, proofSet, proofIndex, numLeaves := tree.Prove()
-	if len(proofSet) == 0 {
-		// proofIndex wasn't reached while creating proof.
+	merkleRoot, proofSet, _, numLeaves := cachedTree.Prove()
+	if proofSet == nil {
 		return 0
 	}
-	if !VerifyProof(sha256.New(), merkleRoot, proofSet, proofIndex, numLeaves) {
+	if !VerifyProof(sha256.New(), merkleRoot, proofSet, index, numLeaves) {
 		panic("verification failed!")
 	}
+
 	// Output is more interesting when there is enough data to contain the
 	// index.
-	if uint64(len(data)) > uint64(subTreeSize)*index {
+	if numLeaves > index {
 		return 1
 	}
 	return 0
@@ -78,51 +68,49 @@ func FuzzReadSubTreesWithProof(data []byte) int {
 // FuzzReadSubTreesNoProof can be used by go-fuzz to test creating a merkle
 // tree from cached subTrees.
 func FuzzReadSubTreesNoProof(data []byte) int {
-	tree := New(sha256.New())
-
-	subTreeSize := 1 + 32 // 1 byte height + 32 bytes hash
-	err := tree.readSubTrees(bytes.NewReader(data))
-	if err != nil && err != io.ErrUnexpectedEOF {
-		return 0
-	} else if err == io.ErrUnexpectedEOF && len(data) < subTreeSize {
-		return -1
-	}
-	if tree.head != nil && tree.Root() == nil {
-		panic("root shouldn't be nil for a non-empty tree")
-	}
-	// The data should at least contain 2 subtrees.
-	if len(data) > 2*subTreeSize {
+	buildAndCompareTreesFromFuzz(data, math.MaxUint64)
+	if len(data) > 2 {
 		return 1
 	}
 	return 0
 }
 
-// readSubTrees is a helper function that maps the data from a io.Reader to
-// subTrees and adds them to a tree.
-func (t *Tree) readSubTrees(r io.Reader) error {
-	// 32 is the length of a sha256 hash and 1 byte is used for the height of
-	// the subTree.
-	subTreeSize := 1 + 32
-	for {
-		subTree := make([]byte, subTreeSize)
-		_, readErr := io.ReadFull(r, subTree)
-		if readErr == io.EOF {
-			// All data has been read.
-			break
-		} else if readErr != nil {
-			return readErr
+// buildAndCompareTreesFromFuzz will read the input data and create a subTree
+// or leaf for each byte of the input data. It returns the cached tree.
+func buildAndCompareTreesFromFuzz(data []byte, proofIndex uint64) (cachedTree *Tree, numLeaves uint64) {
+	hash := sha256.New()
+	tree := New(hash)
+	cachedTree = New(hash)
+	if proofIndex != math.MaxUint64 {
+		cachedTree.SetIndex(proofIndex)
+	}
+
+	for _, b := range data {
+		b = b % 6 // should be in range [0;5]
+
+		// if b == 0 we add the data as a leaf.
+		if b == 0 {
+			data := hash.Sum([]byte{byte(numLeaves)})
+			tree.Push(data)
+			cachedTree.Push(data)
+			numLeaves++
+			continue
 		}
-		// The first byte of the subTree are mapped to a height in range
-		// [0,4].
-		height := int(subTree[0]) % 5
-		sum := subTree[4:]
-		if height > 0 {
-			if err := t.PushSubTree(height, sum); err != nil {
-				return err
-			}
-		} else {
-			t.Push(sum)
+		// else we create a cached subTree of height b-1
+		height := int(b - 1) // should be in range [0:4]
+		subTree := New(hash)
+		for i := uint64(0); i < 1<<uint64(height); i++ {
+			data := hash.Sum([]byte{byte(numLeaves)})
+			tree.Push(data)
+			subTree.Push(data)
+			numLeaves++
+		}
+		if err := cachedTree.PushSubTree(height, subTree.Root()); err != nil {
+			return
 		}
 	}
-	return nil
+	if bytes.Compare(tree.Root(), cachedTree.Root()) != 0 {
+		panic("tree roots don't match")
+	}
+	return
 }
