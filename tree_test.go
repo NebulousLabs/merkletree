@@ -574,6 +574,105 @@ func TestPushSubTreeCorrectRoot(t *testing.T) {
 	if !bytes.Equal(tree6.Root(), expectedRoot) {
 		t.Fatal("root doesn't match expected root")
 	}
+
+	// Create 2 height 0 trees and add 1 height 1 tree. The root should be the
+	// same.
+	tree7 := New(hash)
+	err1 = tree7.PushSubTree(0, leaf1Hash)
+	err2 = tree7.PushSubTree(0, leaf2Hash)
+	err3 = tree7.PushSubTree(1, node34Hash)
+	if err := errors.Compose(err1, err2, err3); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(tree7.Root(), expectedRoot) {
+		t.Fatal("root doesn't match expected root")
+	}
+
+	// Create 2 leaves and add 1 height 1 tree. The root should be the same.
+	tree8 := New(hash)
+	tree8.Push(leaf1Data)
+	tree8.Push(leaf2Data)
+	if err := tree8.PushSubTree(1, node34Hash); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(tree8.Root(), expectedRoot) {
+		t.Fatal("root doesn't match expected root")
+	}
+}
+
+// TestPushSubTreeCorrectRootWithProof creates data for 4 leaves, combines them
+// in different ways and makes sure that the root is always the same. It also
+// creates a proof for them.
+func TestPushSubTreeCorrectRootWithProof(t *testing.T) {
+	hash := sha256.New()
+
+	// Create the data for 4 leaves.
+	leaf1Data := fastrand.Bytes(64)
+	leaf2Data := fastrand.Bytes(64)
+	leaf3Data := fastrand.Bytes(64)
+	leaf4Data := fastrand.Bytes(64)
+
+	// Push the leaves into a tree and get the root.
+	tree := New(hash)
+	proofIndex := uint64(fastrand.Intn(4))
+	if err := tree.SetIndex(proofIndex); err != nil {
+		t.Fatal(err)
+	}
+	tree.Push(leaf1Data)
+	tree.Push(leaf2Data)
+	tree.Push(leaf3Data)
+	tree.Push(leaf4Data)
+	expectedRoot := tree.Root()
+
+	// Create 1 height 1 tree and add 2 leaves. The root should be the same.
+	tree2 := New(hash)
+	proofIndex = uint64(2 + fastrand.Intn(2))
+	leaf1Hash := leafSum(hash, leaf1Data)
+	leaf2Hash := leafSum(hash, leaf2Data)
+	node12Hash := nodeSum(hash, leaf1Hash, leaf2Hash)
+	if err := tree2.SetIndex(proofIndex); err != nil {
+		t.Fatal(err)
+	}
+	if err := tree2.PushSubTree(1, node12Hash); err != nil {
+		t.Fatal(err)
+	}
+	tree2.Push(leaf3Data)
+	tree2.Push(leaf4Data)
+	if !bytes.Equal(tree2.Root(), expectedRoot) {
+		t.Fatal("root doesn't match expected root")
+	}
+
+	// Create 2 leaves and add 1 height 1 tree. The root should be the same.
+	tree3 := New(hash)
+	proofIndex = uint64(fastrand.Intn(2))
+	leaf3Hash := leafSum(hash, leaf3Data)
+	leaf4Hash := leafSum(hash, leaf4Data)
+	if err := tree3.SetIndex(proofIndex); err != nil {
+		t.Fatal(err)
+	}
+	node34Hash := nodeSum(hash, leaf3Hash, leaf4Hash)
+	tree3.Push(leaf1Data)
+	tree3.Push(leaf2Data)
+	if err := tree3.PushSubTree(1, node34Hash); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(tree3.Root(), expectedRoot) {
+		t.Fatal("root doesn't match expected root")
+	}
+
+	// Test the proofs for all the trees.
+	merkleRoot, proofSet, index, numLeaves := tree.Prove()
+	if !VerifyProof(sha256.New(), merkleRoot, proofSet, index, numLeaves) {
+		t.Fatal("failed to verify proof for tree")
+	}
+	merkleRoot, proofSet, index, numLeaves = tree2.Prove()
+	if !VerifyProof(sha256.New(), merkleRoot, proofSet, index, numLeaves) {
+		t.Fatal("failed to verify proof for tree2")
+	}
+	merkleRoot, proofSet, index, numLeaves = tree3.Prove()
+	if !VerifyProof(sha256.New(), merkleRoot, proofSet, index, numLeaves) {
+		t.Fatal("failed to verify proof for tree3")
+	}
 }
 
 // TestPushSubTreeSimple tests pushing some valid and invalid subTrees to the
@@ -602,8 +701,25 @@ func TestPushSubTreeSimple(t *testing.T) {
 	if err := tree.PushSubTree(5, []byte{}); err != nil {
 		t.Fatal(err)
 	}
-	if tree.currentIndex != 2*expectedIndex {
-		t.Errorf("expected index %v but was %v", 2*expectedIndex, tree.currentIndex)
+	expectedIndex *= 2
+	if tree.currentIndex != expectedIndex {
+		t.Errorf("expected index %v but was %v", expectedIndex, tree.currentIndex)
+	}
+	// Push some data equal to height 2 and make sure the expectedIndex is correct.
+	for i := 0; i < 4; i++ {
+		tree.Push([]byte{})
+		expectedIndex++
+		if tree.currentIndex != expectedIndex {
+			t.Errorf("expected index %v but was %v", expectedIndex, tree.currentIndex)
+		}
+	}
+	// Add a subTree of height 2 and check the index again.
+	if err := tree.PushSubTree(2, []byte{}); err != nil {
+		t.Fatal(err)
+	}
+	expectedIndex += 4
+	if tree.currentIndex != expectedIndex {
+		t.Errorf("expected index %v but was %v", expectedIndex, tree.currentIndex)
 	}
 
 	// Create a new tree and set the proof index to 1. Afterwards we push twice

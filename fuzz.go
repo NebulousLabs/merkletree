@@ -82,7 +82,9 @@ func buildAndCompareTreesFromFuzz(data []byte, proofIndex uint64) (cachedTree *T
 	tree := New(hash)
 	cachedTree = New(hash)
 	if proofIndex != math.MaxUint64 {
-		cachedTree.SetIndex(proofIndex)
+		if err := cachedTree.SetIndex(proofIndex); err != nil {
+			panic(err)
+		}
 	}
 
 	for _, b := range data {
