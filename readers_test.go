@@ -16,7 +16,7 @@ func TestReaderRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Compare(root, mt.roots[8]) != 0 {
+	if !bytes.Equal(root, mt.roots[8]) {
 		t.Error("ReaderRoot returned the wrong root")
 	}
 }
@@ -32,7 +32,7 @@ func TestReaderRootPadding(t *testing.T) {
 	}
 
 	expectedRoot := sum(sha256.New(), []byte{0, 1})
-	if bytes.Compare(root, expectedRoot) != 0 {
+	if !bytes.Equal(root, expectedRoot) {
 		t.Error("ReaderRoot returned the wrong root")
 	}
 
@@ -46,7 +46,7 @@ func TestReaderRootPadding(t *testing.T) {
 	baseLeft := sum(sha256.New(), []byte{0, 1, 2})
 	baseRight := sum(sha256.New(), []byte{0, 3})
 	expectedRoot = sum(sha256.New(), append(append([]byte{1}, baseLeft...), baseRight...))
-	if bytes.Compare(root, expectedRoot) != 0 {
+	if !bytes.Equal(root, expectedRoot) {
 		t.Error("ReaderRoot returned the wrong root")
 	}
 }
@@ -61,14 +61,14 @@ func TestBuilReaderProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Compare(root, mt.roots[7]) != 0 {
+	if !bytes.Equal(root, mt.roots[7]) {
 		t.Error("BuildReaderProof returned the wrong root")
 	}
 	if len(proofSet) != len(mt.proofSets[7][5]) {
 		t.Fatal("BuildReaderProof returned a proof with the wrong length")
 	}
 	for i := range proofSet {
-		if bytes.Compare(proofSet[i], mt.proofSets[7][5][i]) != 0 {
+		if !bytes.Equal(proofSet[i], mt.proofSets[7][5][i]) {
 			t.Error("BuildReaderProof returned an incorrect proof")
 		}
 	}
@@ -88,13 +88,13 @@ func TestBuildReaderProofPadding(t *testing.T) {
 	}
 
 	expectedRoot := sum(sha256.New(), []byte{0, 1})
-	if bytes.Compare(root, expectedRoot) != 0 {
+	if !bytes.Equal(root, expectedRoot) {
 		t.Error("ReaderRoot returned the wrong root")
 	}
 	if len(proofSet) != 1 {
 		t.Fatal("proofSet is the incorrect length")
 	}
-	if bytes.Compare(proofSet[0], []byte{1}) != 0 {
+	if !bytes.Equal(proofSet[0], []byte{1}) {
 		t.Error("proofSet is incorrect")
 	}
 	if numLeaves != 1 {
