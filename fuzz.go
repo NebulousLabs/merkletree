@@ -109,7 +109,7 @@ func buildAndCompareTreesFromFuzz(data []byte, proofIndex uint64) (cachedTree *T
 			return
 		}
 	}
-	if bytes.Compare(tree.Root(), cachedTree.Root()) != 0 {
+	if !bytes.Equal(tree.Root(), cachedTree.Root()) {
 		panic("tree roots don't match")
 	}
 	return

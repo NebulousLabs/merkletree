@@ -46,7 +46,7 @@ func TestCachedTreeConstruction(t *testing.T) {
 	// tree with no elements.
 	tree := New(sha256.New())
 	cachedTree := NewCachedTree(sha256.New(), 0)
-	if bytes.Compare(tree.Root(), cachedTree.Root()) != 0 {
+	if !bytes.Equal(tree.Root(), cachedTree.Root()) {
 		t.Error("empty Tree and empty CachedTree do not match")
 	}
 
@@ -57,7 +57,7 @@ func TestCachedTreeConstruction(t *testing.T) {
 	tree.Push(arbData[0])
 	subRoot := tree.Root()
 	cachedTree.Push(subRoot)
-	if bytes.Compare(tree.Root(), cachedTree.Root()) != 0 {
+	if !bytes.Equal(tree.Root(), cachedTree.Root()) {
 		t.Error("naive 1-height Tree and CachedTree do not match")
 	}
 
@@ -80,7 +80,7 @@ func TestCachedTreeConstruction(t *testing.T) {
 	tree.Push(arbData[0])
 	tree.Push(arbData[1])
 	tree.Push(arbData[2])
-	if bytes.Compare(tree.Root(), cachedTree.Root()) != 0 {
+	if !bytes.Equal(tree.Root(), cachedTree.Root()) {
 		t.Error("adding 3 len cacheing is causing problems")
 	}
 
@@ -97,7 +97,7 @@ func TestCachedTreeConstruction(t *testing.T) {
 	// Compare against a formally built tree.
 	tree.Push(arbData[0])
 	tree.Push(arbData[1])
-	if bytes.Compare(cachedTree.Root(), tree.Root()) != 0 {
+	if !bytes.Equal(cachedTree.Root(), tree.Root()) {
 		t.Error("comparison has failed")
 	}
 
@@ -114,7 +114,7 @@ func TestCachedTreeConstruction(t *testing.T) {
 	// Compare against a formally built tree.
 	tree.Push(arbData[1]) // Intentional mistake.
 	tree.Push(arbData[1])
-	if bytes.Compare(cachedTree.Root(), tree.Root()) == 0 {
+	if bytes.Equal(cachedTree.Root(), tree.Root()) {
 		t.Error("comparison has succeeded despite mutation")
 	}
 
@@ -148,7 +148,7 @@ func TestCachedTreeConstruction(t *testing.T) {
 	for i := 4; i < 8; i++ {
 		tree.Push(arbData[i])
 	}
-	if bytes.Compare(cachedTree.Root(), tree.Root()) != 0 {
+	if !bytes.Equal(cachedTree.Root(), tree.Root()) {
 		t.Error("comparison has failed")
 	}
 
@@ -333,7 +333,7 @@ func TestCachedTreeConstructionAuto(t *testing.T) {
 				for k := uint64(0); k < i; k++ {
 					subtree := addSubTree(uint64(h), []byte{byte(k)}, j%n, tree)
 					cachedTree.Push(subtree.Root())
-					if bytes.Compare(tree.Root(), cachedTree.Root()) != 0 {
+					if !bytes.Equal(tree.Root(), cachedTree.Root()) {
 						t.Error("naive 1-height Tree and Cached tree roots do not match")
 					}
 

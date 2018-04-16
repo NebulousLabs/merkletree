@@ -245,7 +245,7 @@ func TestBuildRoot(t *testing.T) {
 
 		// Get the root and compare to the manually constructed root.
 		treeRoot := tree.Root()
-		if bytes.Compare(root, treeRoot) != 0 {
+		if !bytes.Equal(root, treeRoot) {
 			t.Error("tree root doesn't match manual root for index", i)
 		}
 	}
@@ -276,7 +276,7 @@ func TestBuildAndVerifyProof(t *testing.T) {
 
 			// Get the proof and check all values.
 			merkleRoot, proofSet, proofIndex, numSegments := tree.Prove()
-			if bytes.Compare(merkleRoot, mt.roots[i]) != 0 {
+			if !bytes.Equal(merkleRoot, mt.roots[i]) {
 				t.Error("incorrect Merkle root returned by Tree for indices", i, j)
 			}
 			if len(proofSet) != len(expectedProveSet) {
@@ -290,7 +290,7 @@ func TestBuildAndVerifyProof(t *testing.T) {
 				t.Error("incorrect numSegments returned for indices", i, j)
 			}
 			for k := range proofSet {
-				if bytes.Compare(proofSet[k], expectedProveSet[k]) != 0 {
+				if !bytes.Equal(proofSet[k], expectedProveSet[k]) {
 					t.Error("proof set does not match expected proof set for indices", i, j, k)
 				}
 			}
@@ -312,14 +312,14 @@ func TestBuildAndVerifyProof(t *testing.T) {
 			// Check that calling Prove a second time results in the same
 			// values.
 			merkleRoot2, proofSet2, proofIndex2, numSegments2 := tree.Prove()
-			if bytes.Compare(merkleRoot, merkleRoot2) != 0 {
+			if !bytes.Equal(merkleRoot, merkleRoot2) {
 				t.Error("tree returned different merkle roots after calling Prove twice for indices", i, j)
 			}
 			if len(proofSet) != len(proofSet2) {
 				t.Error("tree returned different proof sets after calling Prove twice for indices", i, j)
 			}
 			for k := range proofSet {
-				if bytes.Compare(proofSet[k], proofSet2[k]) != 0 {
+				if !bytes.Equal(proofSet[k], proofSet2[k]) {
 					t.Error("tree returned different proof sets after calling Prove twice for indices", i, j)
 				}
 			}
@@ -522,7 +522,7 @@ func TestPushSubTreeCorrectRoot(t *testing.T) {
 	if err := errors.Compose(err1, err2, err3, err4); err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Compare(tree2.Root(), expectedRoot) != 0 {
+	if !bytes.Equal(tree2.Root(), expectedRoot) {
 		t.Fatal("root doesn't match expected root")
 	}
 
@@ -536,7 +536,7 @@ func TestPushSubTreeCorrectRoot(t *testing.T) {
 	if err := errors.Compose(err1, err2); err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Compare(tree3.Root(), expectedRoot) != 0 {
+	if !bytes.Equal(tree3.Root(), expectedRoot) {
 		t.Fatal("root doesn't match expected root")
 	}
 
@@ -547,7 +547,7 @@ func TestPushSubTreeCorrectRoot(t *testing.T) {
 	if err := tree4.PushSubTree(2, node1234Hash); err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Compare(tree4.Root(), expectedRoot) != 0 {
+	if !bytes.Equal(tree4.Root(), expectedRoot) {
 		t.Fatal("root doesn't match expected root")
 	}
 
@@ -560,7 +560,7 @@ func TestPushSubTreeCorrectRoot(t *testing.T) {
 	if err := errors.Compose(err1, err2, err3); err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Compare(tree5.Root(), expectedRoot) != 0 {
+	if !bytes.Equal(tree5.Root(), expectedRoot) {
 		t.Fatal("root doesn't match expected root")
 	}
 
@@ -571,7 +571,7 @@ func TestPushSubTreeCorrectRoot(t *testing.T) {
 	}
 	tree6.Push(leaf3Data)
 	tree6.Push(leaf4Data)
-	if bytes.Compare(tree6.Root(), expectedRoot) != 0 {
+	if !bytes.Equal(tree6.Root(), expectedRoot) {
 		t.Fatal("root doesn't match expected root")
 	}
 }
