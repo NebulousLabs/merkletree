@@ -10,7 +10,7 @@ import (
 
 // Fuzz is called by go-fuzz to look for inputs to BuildReaderProof that will
 // not verify correctly.
-func FuzzX(data []byte) int {
+func Fuzz(data []byte) int {
 	// Use the first two bytes to determine the proof index.
 	if len(data) < 2 {
 		return -1
@@ -39,7 +39,7 @@ func FuzzX(data []byte) int {
 
 // FuzzReadSubTreesWithProof can be used by go-fuzz to test creating a merkle
 // tree from cached subTrees and creating/proving a merkle proof on this tree.
-func Fuzz(data []byte) int {
+func FuzzReadSubTreesWithProof(data []byte) int {
 	// We want at least 2 bytes for the index and 1 for a subTree.
 	if len(data) < 3 {
 		return -1
