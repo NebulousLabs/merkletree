@@ -100,7 +100,7 @@ func main() {
 ```
 
 For more extensive documentation, refer to the
-[godoc](http://godoc.org/github.com/NebulousLabs/merkletree).
+[godoc](https://godoc.org/gitlab.com/NebulousLabs/merkletree).
 
 Notes
 -----
