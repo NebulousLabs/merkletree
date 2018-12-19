@@ -5,6 +5,12 @@ import (
 	"hash"
 )
 
+var (
+	// prefixes used during hashing, as specified by RFC 6962
+	leafHashPrefix = []byte{0}
+	nodeHashPrefix = []byte{1}
+)
+
 // A Tree takes data as leaves and returns the Merkle root. Each call to 'Push'
 // adds one leaf to the Merkle tree. Calling 'Root' returns the Merkle root.
 // The Tree also constructs proof that a single leaf is a part of the tree. The
@@ -61,14 +67,14 @@ func sum(h hash.Hash, data ...[]byte) []byte {
 // sums are calculated using:
 //		Hash(0x00 || data)
 func leafSum(h hash.Hash, data []byte) []byte {
-	return sum(h, []byte{0}, data)
+	return sum(h, leafHashPrefix, data)
 }
 
 // nodeSum returns the hash created from two sibling nodes being combined into
 // a parent node. Node sums are calculated using:
 //		Hash(0x01 || left sibling sum || right sibling sum)
 func nodeSum(h hash.Hash, a, b []byte) []byte {
-	return sum(h, []byte{1}, a, b)
+	return sum(h, nodeHashPrefix, a, b)
 }
 
 // joinSubTrees combines two equal sized subTrees into a larger subTree.

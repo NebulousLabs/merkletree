@@ -2,7 +2,10 @@ package merkletree
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
+	"hash"
+	"io"
 	"testing"
 )
 
@@ -107,5 +110,215 @@ func TestEmptyReader(t *testing.T) {
 	_, _, _, err := BuildReaderProof(new(bytes.Reader), sha256.New(), 64, 5)
 	if err == nil {
 		t.Error(err)
+	}
+}
+
+// BenchmarkReader1_1k calculates the Merkle root of a random 1KB slice, using
+// a 1-byte segment size and SHA-256. The segment size is intentionally chosen
+// to be smaller than the hash.
+func BenchmarkReader1_1k(b *testing.B) {
+	data := make([]byte, 1024)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
+	segmentSize := 1
+	h := sha256.New()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = ReaderRoot(bytes.NewReader(data), h, segmentSize)
+	}
+}
+
+// BenchmarkReader64_1k calculates the Merkle root of a random 1KB slice,
+// using a 64-byte segment size and SHA-256.
+func BenchmarkReader64_1k(b *testing.B) {
+	data := make([]byte, 1024)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
+	segmentSize := 64
+	h := sha256.New()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = ReaderRoot(bytes.NewReader(data), h, segmentSize)
+	}
+}
+
+// BenchmarkReader64_4MB calculates the Merkle root of a random 4MB slice,
+// using a 64-byte segment size and SHA-256.
+func BenchmarkReader64_4MB(b *testing.B) {
+	data := make([]byte, 4*1024*1024)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
+	segmentSize := 64
+	h := sha256.New()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = ReaderRoot(bytes.NewReader(data), h, segmentSize)
+	}
+}
+
+// BenchmarkReader4k_4MB calculates the Merkle root of a random 4MB slice,
+// using a 4096-byte segment size and SHA-256.
+func BenchmarkReader4k_4MB(b *testing.B) {
+	data := make([]byte, 4*1024*1024)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
+	segmentSize := 4096
+	h := sha256.New()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = ReaderRoot(bytes.NewReader(data), h, segmentSize)
+	}
+}
+
+// treeReaderRoot is the old tree-based Merkle root algorithm, preserved for
+// benchmarking.
+func treeReaderRoot(r io.Reader, h hash.Hash, segmentSize int) (root []byte, err error) {
+	tree := New(h)
+	err = tree.ReadAll(r, segmentSize)
+	if err != nil {
+		return
+	}
+	root = tree.Root()
+	return
+}
+
+// BenchmarkReaderTree1_1k calculates the Merkle root of a random 1KB slice, using
+// a 1-byte segment size and SHA-256. The segment size is intentionally chosen
+// to be smaller than the hash.
+func BenchmarkReaderTree1_1k(b *testing.B) {
+	data := make([]byte, 1024)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
+	segmentSize := 1
+	h := sha256.New()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = treeReaderRoot(bytes.NewReader(data), h, segmentSize)
+	}
+}
+
+// BenchmarkReaderTree64_1k calculates the Merkle root of a random 1KB slice,
+// using a 64-byte segment size and SHA-256.
+func BenchmarkReaderTree64_1k(b *testing.B) {
+	data := make([]byte, 1024)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
+	segmentSize := 64
+	h := sha256.New()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = treeReaderRoot(bytes.NewReader(data), h, segmentSize)
+	}
+}
+
+// BenchmarkReaderTree64_4MB calculates the Merkle root of a random 4MB slice,
+// using a 64-byte segment size and SHA-256.
+func BenchmarkReaderTree64_4MB(b *testing.B) {
+	data := make([]byte, 4*1024*1024)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
+	segmentSize := 64
+	h := sha256.New()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = treeReaderRoot(bytes.NewReader(data), h, segmentSize)
+	}
+}
+
+// BenchmarkReaderTree4k_4MB calculates the Merkle root of a random 4MB slice,
+// using a 4096-byte segment size and SHA-256.
+func BenchmarkReaderTree4k_4MB(b *testing.B) {
+	data := make([]byte, 4*1024*1024)
+	_, err := rand.Read(data)
+	if err != nil {
+		b.Fatal(err)
+	}
+	segmentSize := 4096
+	h := sha256.New()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = treeReaderRoot(bytes.NewReader(data), h, segmentSize)
+	}
+}
+
+// TestReaderMatch tests that the new ReaderRoot algorithm produces results
+// identical to the old algorithm.
+func TestReaderMatch(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+
+	dataSizes := []int{1, 32, 64, 77, 4096, 5000, 4 * 1024 * 1024}
+	segmentSizes := []int{7, 32, 64, 77, 4096, 4 * 1024 * 1024}
+
+	for _, d := range dataSizes {
+		for _, s := range segmentSizes {
+			data := make([]byte, d)
+			_, err := rand.Read(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			h := sha256.New()
+			r1, err := ReaderRoot(bytes.NewReader(data), h, s)
+			if err != nil {
+				t.Error(err)
+			}
+			r2, err := treeReaderRoot(bytes.NewReader(data), h, s)
+			if err != nil {
+				t.Error(err)
+			}
+			if !bytes.Equal(r1, r2) {
+				t.Error("Merkle roots do not match:\n", r1, "\n", r2)
+			}
+		}
+	}
+}
+
+// TestReaderBadInputs tests that ReaderRoot properly handles edge-case
+// inputs, such as a segment size of zero or a reader containing no data.
+func TestReaderBadInputs(t *testing.T) {
+	// A reader containing no data should result in a nil root, without an
+	// error.
+	root, err := ReaderRoot(&bytes.Reader{}, sha256.New(), 64)
+	if err != nil {
+		t.Error(err)
+	} else if root != nil {
+		t.Error("root of empty reader should be nil; got", root)
+	}
+
+	// A segment size of 0 should return an error.
+	_, err = ReaderRoot(bytes.NewReader([]byte("data")), sha256.New(), 0)
+	if err == nil {
+		t.Error("ReaderRoot should return an error if segment size is zero")
 	}
 }
